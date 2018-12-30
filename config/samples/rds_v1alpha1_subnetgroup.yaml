@@ -1,0 +1,14 @@
+apiVersion: rds.nomsmon.com/v1alpha1
+kind: SubnetGroup
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: example-subnet-group
+spec:
+  name: test-subnet-group-k8s
+  description: "test subnet group created by k8s"
+  subnets:
+  - subnet-0abac047f623bb542
+  - subnet-0d2f8b773e635d8b9
+  - subnet-0f30aa08c880eb80b
+  region: us-west-2

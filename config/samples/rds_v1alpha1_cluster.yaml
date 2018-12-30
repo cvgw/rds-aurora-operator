@@ -1,0 +1,16 @@
+apiVersion: rds.nomsmon.com/v1alpha1
+kind: Cluster
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: cluster-sample
+spec:
+  id: test-cluster-k8s
+  engine: aurora-mysql
+  engine_version: 5.7.12
+  master_username: admin
+  master_user_pass: hello-world-123456
+  subnet_group_name: test-subnet-group-k8s
+  security_group_ids:
+  - sg-022acecc22d9eb339
+
