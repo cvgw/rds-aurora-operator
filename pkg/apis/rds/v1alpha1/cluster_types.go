@@ -40,6 +40,8 @@ type ClusterSpec struct {
 type ClusterStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	State      string `json:"state,omitempty"`
+	ReadySince int64  `json:"ready_since,omitempty"`
 }
 
 // +genclient
@@ -47,6 +49,7 @@ type ClusterStatus struct {
 
 // Cluster is the Schema for the clusters API
 // +k8s:openapi-gen=true
+// +kubebuilder:subresource:status
 type Cluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

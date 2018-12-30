@@ -88,16 +88,20 @@ type ReconcileSubnetGroup struct {
 
 // +kubebuilder:rbac:groups=rds.nomsmon.com,resources=subnetgroups,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileSubnetGroup) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	log.Info("reconcile subnet group")
+	logger := log.WithFields(log.Fields{
+		"controller": "subnet_group",
+	})
+
+	logger.Info("reconcile subnet group")
 
 	instance := &rdsv1alpha1.SubnetGroup{}
 
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("delete")
-			log.Infof("namespace named %s", request.NamespacedName)
-			log.Infof("instance name %s", instance.Name)
+			logger.Info("delete")
+			logger.Infof("namespace named %s", request.NamespacedName)
+			logger.Infof("instance name %s", instance.Name)
 
 			return reconcile.Result{}, nil
 		}
@@ -114,7 +118,7 @@ func (r *ReconcileSubnetGroup) Reconcile(request reconcile.Request) (reconcile.R
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	log.Info(group)
+	logger.Info(group)
 
 	return reconcile.Result{}, nil
 }

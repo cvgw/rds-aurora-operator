@@ -48,7 +48,7 @@ func WaitForClusterReady(ctx context.Context, svc *rds.RDS, cluster *rds.DBClust
 }
 
 type CreateClusterRequest struct {
-	Spec *rdsv1alpha1.ClusterSpec
+	Spec rdsv1alpha1.ClusterSpec
 }
 
 func CreateCluster(svc *rds.RDS, req CreateClusterRequest) (*rds.DBCluster, error) {
