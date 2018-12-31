@@ -14,19 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cluster
+package instance
 
 import (
 	"context"
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/rds"
-	log "github.com/sirupsen/logrus"
-
 	rdsv1alpha1 "github.com/cvgw/rds-aurora-operator/pkg/apis/rds/v1alpha1"
 	"github.com/cvgw/rds-aurora-operator/pkg/lib/provider"
-	clusterProvider "github.com/cvgw/rds-aurora-operator/pkg/lib/provider/cluster"
-	clusterService "github.com/cvgw/rds-aurora-operator/pkg/lib/service/cluster"
+	instanceProvider "github.com/cvgw/rds-aurora-operator/pkg/lib/provider/instance"
+	service "github.com/cvgw/rds-aurora-operator/pkg/lib/service/instance"
+	log "github.com/sirupsen/logrus"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,7 +46,7 @@ const (
 	unprovisioned     = "unprovisioned"
 	provisioning      = "provisioning"
 	provisioned       = "ready"
-	dbClusterReady    = "available"
+	dbInstanceReady   = "available"
 	requiredReadyTime = 120 * 1000000000
 )
 
@@ -56,16 +56,24 @@ func Add(mgr manager.Manager) error {
 }
 
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileCluster{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileInstance{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
-	c, err := controller.New("cluster-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("instance-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	err = c.Watch(&source.Kind{Type: &rdsv1alpha1.Cluster{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &rdsv1alpha1.Instance{}}, &handler.EnqueueRequestForObject{})
+	if err != nil {
+		return err
+	}
+
+	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &rdsv1alpha1.Instance{},
+	})
 	if err != nil {
 		return err
 	}
@@ -73,93 +81,108 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-var _ reconcile.Reconciler = &ReconcileCluster{}
+var _ reconcile.Reconciler = &ReconcileInstance{}
 
-type ReconcileCluster struct {
+type ReconcileInstance struct {
 	client.Client
 	scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=rds.nomsmon.com,resources=clusters,verbs=get;list;watch;create;update;patch;delete
-func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	// TODO
+// +kubebuilder:rbac:groups=rds.nomsmon.com,resources=clusters,verbs=get;list;watch
+// +kubebuilder:rbac:groups=rds.nomsmon.com,resources=instances,verbs=get;list;watch;create;update;patch;delete
+func (r *ReconcileInstance) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	log.SetLevel(log.DebugLevel)
-
 	logger := log.WithFields(log.Fields{
-		"controller": "cluster",
+		"controller": "instance",
 	})
-
-	logger.Info("reconcile")
-
-	instance := &rdsv1alpha1.Cluster{}
-
-	err := r.Get(context.TODO(), request.NamespacedName, instance)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info("delete")
-			return reconcile.Result{}, nil
-		}
-		logger.Warn(err)
-		return reconcile.Result{}, err
-	}
 
 	result := reconcile.Result{}
 
-	copy := instance
-	spec := copy.Spec
-	state := copy.Status.State
+	instance := &rdsv1alpha1.Instance{}
+	err := r.Get(context.TODO(), request.NamespacedName, instance)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			logger.Debug("delete")
+			return reconcile.Result{}, nil
+		}
+		return reconcile.Result{}, err
+	}
+
+	status := instance.Status
+	spec := instance.Spec
+
+	state := status.State
+
+	mutateState := func(state string) {
+		logger.Debugf("setting state to %s", state)
+		status.State = state
+	}
 
 	sess := provider.NewSession(aki, sak, region, roleArn, profile)
 	svc := rds.New(sess)
 
-	logger.Infof("current state is %s", state)
 	switch state {
 	case "":
-		logger.Infof("setting state to %s", unprovisioned)
-		copy.Status.State = unprovisioned
-		//result.RequeueAfter = (10 * time.Second)
+		mutateState(unprovisioned)
 	case unprovisioned:
-		logger.Info("setting state to %s", provisioning)
-		copy.Status.State = provisioning
-
-		dbCluster, err := findOrCreateCluster(logger, svc, spec)
+		dbInstance, err := instanceProvider.FindDBClusterInstance(svc, spec.Id)
 		if err != nil {
-			logger.Warnf("error during find or creat db cluster: %s", err)
-			return reconcile.Result{}, err
+			if err != instanceProvider.NotFoundErr {
+				logger.Warnf("error finding instance: %s", err)
+				return reconcile.Result{}, err
+			}
+
+			logger.Debug("instance does not exist yet")
+
+			req := service.CreateInstanceRequest{
+				Spec: spec,
+			}
+
+			dbInstance, err = service.CreateDBInstance(svc, req)
+			if err != nil {
+				logger.Warnf("error creating instance: %s", err)
+				return reconcile.Result{}, err
+			}
 		}
 
-		logger.Info(dbCluster)
+		logger.Debug(dbInstance)
+		mutateState(provisioning)
+
+		result.RequeueAfter = 10 * time.Second
 	case provisioning:
-		dbCluster, err := clusterProvider.FindDBCluster(svc, spec.Id)
+		dbInstance, err := instanceProvider.FindDBClusterInstance(svc, spec.Id)
 		if err != nil {
-			logger.Warnf("error retrieving db cluster: %s", err)
+			logger.Warnf("error finding instance: %s", err)
 			return reconcile.Result{}, err
 		}
 
-		if *dbCluster.Status == dbClusterReady {
-			log.Debug("db cluster is ready")
+		log.Debug(dbInstance)
 
-			if copy.Status.ReadySince == 0 {
+		if *dbInstance.DBInstanceStatus == dbInstanceReady {
+			log.Debug("db instance is ready")
+
+			if status.ReadySince == 0 {
 				ready := time.Now().UnixNano()
 				log.Debugf("setting ready since %d", ready)
-				copy.Status.ReadySince = ready
+				status.ReadySince = ready
 			}
 
-			readyTime := time.Now().UnixNano() - copy.Status.ReadySince
+			readyTime := time.Now().UnixNano() - status.ReadySince
 			log.Debugf("readyTime %d", readyTime)
+
 			if readyTime >= requiredReadyTime {
-				log.Debugf("setting state to %s", provisioned)
-				copy.Status.State = provisioned
+				mutateState(provisioned)
 			}
 		} else {
-			copy.Status.ReadySince = 0
+			status.ReadySince = 0
 		}
 
 		result.RequeueAfter = 10 * time.Second
-	default:
 	}
 
-	err = r.Status().Update(context.TODO(), copy)
+	instance.Status = status
+
+	err = r.Status().Update(context.TODO(), instance)
 	if err != nil {
 		logger.Warnf("instance update failed: %s", err)
 		return reconcile.Result{}, err
@@ -167,32 +190,4 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	logger.Info("reconcile success")
 	return result, nil
-}
-
-func findOrCreateCluster(
-	logger *log.Entry, svc *rds.RDS, spec rdsv1alpha1.ClusterSpec,
-) (*rds.DBCluster, error) {
-
-	dbCluster, err := clusterProvider.FindDBCluster(svc, spec.Id)
-	if err != nil {
-		if err != clusterProvider.ClusterNotFoundErr {
-			logger.Warn(err)
-			return nil, err
-		}
-
-		logger.Info("cluster does not exist yet")
-		req := clusterService.CreateClusterRequest{
-			Spec: spec,
-		}
-		dbCluster, err := clusterService.CreateCluster(svc, req)
-		if err != nil {
-			logger.Warn(err)
-			return nil, err
-		}
-
-		return dbCluster, nil
-	}
-	logger.Info("cluster exists")
-
-	return dbCluster, nil
 }

@@ -1,0 +1,12 @@
+apiVersion: rds.nomsmon.com/v1alpha1
+kind: Instance
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: instance-sample
+spec:
+  id: test-cluster-primary-k8s
+  cluster_id: test-cluster-k8s
+  engine: aurora-mysql
+  allocated_storage: 10
+  class: db.t2.small
