@@ -1,0 +1,8 @@
+apiVersion: rds.nomsmon.com/v1alpha1
+kind: ClusterDeletion
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: clusterdeletion-sample
+spec:
+  cluster_id: test-cluster-k8s
