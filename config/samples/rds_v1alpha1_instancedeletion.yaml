@@ -1,0 +1,8 @@
+apiVersion: rds.nomsmon.com/v1alpha1
+kind: InstanceDeletion
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: instancedeletion-sample
+spec:
+  instance_id: test-cluster-primary-k8s

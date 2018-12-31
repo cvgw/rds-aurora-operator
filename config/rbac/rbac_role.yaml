@@ -59,6 +59,26 @@ rules:
 - apiGroups:
   - rds.nomsmon.com
   resources:
+  - instances
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - rds.nomsmon.com
+  resources:
+  - instancedeletions
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - rds.nomsmon.com
+  resources:
   - subnetgroups
   verbs:
   - get

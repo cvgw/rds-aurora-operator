@@ -46,20 +46,16 @@ func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
 }
 
-// newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileSubnetGroup{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
-	// Create a new controller
 	c, err := controller.New("subnetgroup-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to SubnetGroup
 	err = c.Watch(&source.Kind{Type: &rdsv1alpha1.SubnetGroup{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
@@ -80,7 +76,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 var _ reconcile.Reconciler = &ReconcileSubnetGroup{}
 
-// ReconcileSubnetGroup reconciles a SubnetGroup object
 type ReconcileSubnetGroup struct {
 	client.Client
 	scheme *runtime.Scheme
@@ -92,17 +87,14 @@ func (r *ReconcileSubnetGroup) Reconcile(request reconcile.Request) (reconcile.R
 		"controller": "subnet_group",
 	})
 
-	logger.Info("reconcile subnet group")
+	logger.Info("reconcile")
 
 	instance := &rdsv1alpha1.SubnetGroup{}
 
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Info("delete")
-			logger.Infof("namespace named %s", request.NamespacedName)
-			logger.Infof("instance name %s", instance.Name)
-
+			logger.Debug("delete")
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
@@ -118,7 +110,8 @@ func (r *ReconcileSubnetGroup) Reconcile(request reconcile.Request) (reconcile.R
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	logger.Info(group)
+	logger.Debug(group)
 
+	logger.Info("reconcile success")
 	return reconcile.Result{}, nil
 }

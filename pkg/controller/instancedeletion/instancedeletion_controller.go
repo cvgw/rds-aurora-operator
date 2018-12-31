@@ -14,19 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package clusterdeletion
+package instancedeletion
 
 import (
 	"context"
+	"errors"
 	"time"
 
-	"errors"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go/service/rds"
 	rdsv1alpha1 "github.com/cvgw/rds-aurora-operator/pkg/apis/rds/v1alpha1"
 	"github.com/cvgw/rds-aurora-operator/pkg/lib/provider"
-	clusterProvider "github.com/cvgw/rds-aurora-operator/pkg/lib/provider/cluster"
-	log "github.com/sirupsen/logrus"
+	instanceProvider "github.com/cvgw/rds-aurora-operator/pkg/lib/provider/instance"
 	kubeErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -54,16 +54,16 @@ func Add(mgr manager.Manager) error {
 }
 
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileClusterDeletion{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileInstanceDeletion{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
-	c, err := controller.New("clusterdeletion-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("instancedeletion-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	err = c.Watch(&source.Kind{Type: &rdsv1alpha1.ClusterDeletion{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &rdsv1alpha1.InstanceDeletion{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -71,26 +71,26 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-var _ reconcile.Reconciler = &ReconcileClusterDeletion{}
+var _ reconcile.Reconciler = &ReconcileInstanceDeletion{}
 
-type ReconcileClusterDeletion struct {
+type ReconcileInstanceDeletion struct {
 	client.Client
 	scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=rds.nomsmon.com,resources=clusters,verbs=get;list;watch
-// +kubebuilder:rbac:groups=rds.nomsmon.com,resources=clusterdeletions,verbs=get;list;watch;create;update;patch;delete
-func (r *ReconcileClusterDeletion) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+// +kubebuilder:rbac:groups=rds.nomsmon.com,resources=instances,verbs=get;list;watch
+// +kubebuilder:rbac:groups=rds.nomsmon.com,resources=instancedeletions,verbs=get;list;watch;create;update;patch;delete
+func (r *ReconcileInstanceDeletion) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	log.SetLevel(log.DebugLevel)
 
 	logger := log.WithFields(log.Fields{
-		"controller": "cluster_deletion",
+		"controller": "instance_deletion",
 	})
 
 	logger.Info("reconcile")
 
 	result := reconcile.Result{}
-	instance := &rdsv1alpha1.ClusterDeletion{}
+	instance := &rdsv1alpha1.InstanceDeletion{}
 
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
@@ -104,12 +104,12 @@ func (r *ReconcileClusterDeletion) Reconcile(request reconcile.Request) (reconci
 	status := instance.Status
 	spec := instance.Spec
 
-	clusterList := &rdsv1alpha1.ClusterList{}
-	err = r.List(context.TODO(), &client.ListOptions{}, clusterList)
+	instanceList := &rdsv1alpha1.InstanceList{}
+	err = r.List(context.TODO(), &client.ListOptions{}, instanceList)
 
-	for _, cluster := range clusterList.Items {
-		if cluster.Spec.Id == spec.ClusterId {
-			err := errors.New("cluster resource still exists, cannot delete")
+	for _, i := range instanceList.Items {
+		if i.Spec.Id == spec.InstanceId {
+			err := errors.New("instance resource still exists, cannot delete")
 			logger.Warn(err)
 
 			return reconcile.Result{}, err
@@ -120,7 +120,6 @@ func (r *ReconcileClusterDeletion) Reconcile(request reconcile.Request) (reconci
 	svc := rds.New(sess)
 
 	state := status.State
-	logger.Debugf("current state is %s", state)
 	switch state {
 	case "":
 		logger.Debugf("setting state to %s", created)
@@ -130,23 +129,23 @@ func (r *ReconcileClusterDeletion) Reconcile(request reconcile.Request) (reconci
 		status.State = executing
 
 		logger.Debug("begining deletion")
-		if err := clusterProvider.DeleteDBCluster(svc, spec.ClusterId); err != nil {
-			logger.Warnf("error deleting cluster: %s", err)
+		if err := instanceProvider.DeleteDBClusterInstance(svc, spec.InstanceId); err != nil {
+			logger.Warnf("error deleting instance: %s", err)
 			return reconcile.Result{}, err
 		}
 	case executing:
-		dbCluster, err := clusterProvider.FindDBCluster(svc, spec.ClusterId)
+		dbInstance, err := instanceProvider.FindDBClusterInstance(svc, spec.InstanceId)
 		if err != nil {
-			if err != clusterProvider.ClusterNotFoundErr {
-				logger.Warnf("error finding cluster being deleted: %s", err)
+			if err != instanceProvider.NotFoundErr {
+				logger.Warnf("error finding instance being deleted: %s", err)
 				return reconcile.Result{}, err
 			}
-			logger.Debugf("cluster has been deleted: %s", err)
+			logger.Debugf("instance has been deleted: %s", err)
 			logger.Debugf("setting state to %s", completed)
 			status.State = completed
 		} else {
-			logger.Debug("cluster is still being deleted")
-			logger.Debug(dbCluster)
+			logger.Debug("instance is still being deleted")
+			logger.Debug(dbInstance)
 		}
 		result.RequeueAfter = 10 * time.Second
 	default:

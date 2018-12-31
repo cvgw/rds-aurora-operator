@@ -112,14 +112,14 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	sess := provider.NewSession(aki, sak, region, roleArn, profile)
 	svc := rds.New(sess)
 
-	logger.Infof("current state is %s", state)
+	logger.Debugf("current state is %s", state)
 	switch state {
 	case "":
-		logger.Infof("setting state to %s", unprovisioned)
+		logger.Debugf("setting state to %s", unprovisioned)
 		copy.Status.State = unprovisioned
 		//result.RequeueAfter = (10 * time.Second)
 	case unprovisioned:
-		logger.Info("setting state to %s", provisioning)
+		logger.Debug("setting state to %s", provisioning)
 		copy.Status.State = provisioning
 
 		dbCluster, err := findOrCreateCluster(logger, svc, spec)
@@ -128,7 +128,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			return reconcile.Result{}, err
 		}
 
-		logger.Info(dbCluster)
+		logger.Debug(dbCluster)
 	case provisioning:
 		dbCluster, err := clusterProvider.FindDBCluster(svc, spec.Id)
 		if err != nil {

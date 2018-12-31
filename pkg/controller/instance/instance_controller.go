@@ -96,9 +96,11 @@ func (r *ReconcileInstance) Reconcile(request reconcile.Request) (reconcile.Resu
 		"controller": "instance",
 	})
 
-	result := reconcile.Result{}
+	logger.Info("reconcile")
 
+	result := reconcile.Result{}
 	instance := &rdsv1alpha1.Instance{}
+
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
