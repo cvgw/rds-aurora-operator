@@ -119,7 +119,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			logger.Warnf("error retrieving db cluster: %s", err)
 			return reconcile.Result{}, err
 		}
-
 		logger.Debug(dbCluster)
 
 		if *dbCluster.Status == service.DBClusterReady {
@@ -133,6 +132,20 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 
 		result.RequeueAfter = 10 * time.Second
+	case service.Provisioned:
+		dbCluster, err := clusterProvider.FindDBCluster(svc, spec.Id)
+		if err != nil {
+			logger.Warnf("error retrieving db cluster: %s", err)
+			return reconcile.Result{}, err
+		}
+		logger.Debug(dbCluster)
+
+		if *dbCluster.Status == service.DBClusterReady {
+			logger.Debug("setting resource info in status")
+			status.DBClusterId = *dbCluster.DBClusterIdentifier
+			status.Endpoint = *dbCluster.Endpoint
+			status.ReaderEndpoint = *dbCluster.ReaderEndpoint
+		}
 	}
 
 	instance.Status = status

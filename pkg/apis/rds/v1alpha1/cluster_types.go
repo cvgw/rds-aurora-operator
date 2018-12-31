@@ -40,8 +40,11 @@ type ClusterSpec struct {
 type ClusterStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	State      string `json:"state,omitempty"`
-	ReadySince int64  `json:"ready_since,omitempty"`
+	State          string `json:"state,omitempty"`
+	ReadySince     int64  `json:"ready_since,omitempty"`
+	DBClusterId    string `json:"db_cluster_id,omitempty"`
+	Endpoint       string `json:"endpoint,omitempty"`
+	ReaderEndpoint string `json:"reader_endpoint,omitempty"`
 }
 
 // +genclient

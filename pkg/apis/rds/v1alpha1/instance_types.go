@@ -38,8 +38,11 @@ type InstanceSpec struct {
 type InstanceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	State      string `json:"state,omitempty"`
-	ReadySince int64  `json:"ready_since,omitempty"`
+	State        string `json:"state,omitempty"`
+	ReadySince   int64  `json:"ready_since,omitempty"`
+	DBInstanceId string `json:"db_instance_id,omitempty"`
+	DBClusterId  string `json:"db_cluster_id,omitempty"`
+	Endpoint     string `json:"endpoint,omitempty"`
 }
 
 // +genclient

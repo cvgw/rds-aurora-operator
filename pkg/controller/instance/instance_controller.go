@@ -166,6 +166,20 @@ func (r *ReconcileInstance) Reconcile(request reconcile.Request) (reconcile.Resu
 		}
 
 		result.RequeueAfter = 10 * time.Second
+	case service.Provisioned:
+		dbInstance, err := instanceProvider.FindDBClusterInstance(svc, spec.Id)
+		if err != nil {
+			logger.Warnf("error retrieving db instance: %s", err)
+			return reconcile.Result{}, err
+		}
+		logger.Debug(dbInstance)
+
+		if *dbInstance.DBInstanceStatus == service.DBInstanceReady {
+			logger.Debug("setting resource info in status")
+			status.DBInstanceId = *dbInstance.DBInstanceIdentifier
+			status.DBClusterId = *dbInstance.DBClusterIdentifier
+			status.Endpoint = *dbInstance.Endpoint.Address
+		}
 	}
 
 	instance.Status = status

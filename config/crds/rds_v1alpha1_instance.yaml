@@ -41,6 +41,8 @@ spec:
           type: object
         status:
           properties:
+            endpoint:
+              type: string
             state:
               description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
                 of cluster Important: Run "make" to regenerate code after modifying
