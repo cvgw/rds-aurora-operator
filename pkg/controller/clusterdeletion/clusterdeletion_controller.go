@@ -38,11 +38,6 @@ import (
 )
 
 const (
-	aki       = ""
-	sak       = ""
-	roleArn   = ""
-	profile   = "dev"
-	region    = "us-west-2"
 	created   = "created"
 	executing = "executing"
 	completed = "completed"
@@ -116,7 +111,7 @@ func (r *ReconcileClusterDeletion) Reconcile(request reconcile.Request) (reconci
 		}
 	}
 
-	sess := provider.NewSession(aki, sak, region, roleArn, profile)
+	sess := provider.NewSession()
 	svc := rds.New(sess)
 
 	state := status.State

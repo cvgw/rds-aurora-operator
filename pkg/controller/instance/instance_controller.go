@@ -24,7 +24,8 @@ import (
 	rdsv1alpha1 "github.com/cvgw/rds-aurora-operator/pkg/apis/rds/v1alpha1"
 	"github.com/cvgw/rds-aurora-operator/pkg/lib/provider"
 	instanceProvider "github.com/cvgw/rds-aurora-operator/pkg/lib/provider/instance"
-	service "github.com/cvgw/rds-aurora-operator/pkg/lib/service/instance"
+	"github.com/cvgw/rds-aurora-operator/pkg/lib/service"
+	instanceService "github.com/cvgw/rds-aurora-operator/pkg/lib/service/instance"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -112,21 +113,18 @@ func (r *ReconcileInstance) Reconcile(request reconcile.Request) (reconcile.Resu
 
 	status := instance.Status
 	spec := instance.Spec
-
 	state := status.State
 
-	mutateState := func(state string) {
-		logger.Debugf("setting state to %s", state)
-		status.State = state
-	}
-
-	sess := provider.NewSession(aki, sak, region, roleArn, profile)
+	sess := provider.NewSession()
 	svc := rds.New(sess)
 
+	logger.Debugf("current state is %s", state)
 	switch state {
 	case "":
-		mutateState(unprovisioned)
-	case unprovisioned:
+		status.State = service.ChangeState(logger, service.Unprovisioned)
+	case service.Unprovisioned:
+		status.State = service.ChangeState(logger, service.Provisioning)
+
 		dbInstance, err := instanceProvider.FindDBClusterInstance(svc, spec.Id)
 		if err != nil {
 			if err != instanceProvider.NotFoundErr {
@@ -136,11 +134,11 @@ func (r *ReconcileInstance) Reconcile(request reconcile.Request) (reconcile.Resu
 
 			logger.Debug("instance does not exist yet")
 
-			req := service.CreateInstanceRequest{
+			req := instanceService.CreateInstanceRequest{
 				Spec: spec,
 			}
 
-			dbInstance, err = service.CreateDBInstance(svc, req)
+			dbInstance, err = instanceService.CreateDBInstance(svc, req)
 			if err != nil {
 				logger.Warnf("error creating instance: %s", err)
 				return reconcile.Result{}, err
@@ -148,34 +146,22 @@ func (r *ReconcileInstance) Reconcile(request reconcile.Request) (reconcile.Resu
 		}
 
 		logger.Debug(dbInstance)
-		mutateState(provisioning)
-
-		result.RequeueAfter = 10 * time.Second
-	case provisioning:
+	case service.Provisioning:
 		dbInstance, err := instanceProvider.FindDBClusterInstance(svc, spec.Id)
 		if err != nil {
 			logger.Warnf("error finding instance: %s", err)
 			return reconcile.Result{}, err
 		}
 
-		log.Debug(dbInstance)
+		logger.Debug(dbInstance)
 
-		if *dbInstance.DBInstanceStatus == dbInstanceReady {
-			log.Debug("db instance is ready")
+		if *dbInstance.DBInstanceStatus == service.DBInstanceReady {
+			logger.Debug("db resource is ready")
 
-			if status.ReadySince == 0 {
-				ready := time.Now().UnixNano()
-				log.Debugf("setting ready since %d", ready)
-				status.ReadySince = ready
-			}
-
-			readyTime := time.Now().UnixNano() - status.ReadySince
-			log.Debugf("readyTime %d", readyTime)
-
-			if readyTime >= requiredReadyTime {
-				mutateState(provisioned)
-			}
+			status.ReadySince = service.CalculateReadySince(logger, status.ReadySince)
+			status.State = service.StateFromReadySince(logger, status.ReadySince)
 		} else {
+			logger.Debug("db resource is not ready")
 			status.ReadySince = 0
 		}
 
@@ -183,7 +169,6 @@ func (r *ReconcileInstance) Reconcile(request reconcile.Request) (reconcile.Resu
 	}
 
 	instance.Status = status
-
 	err = r.Status().Update(context.TODO(), instance)
 	if err != nil {
 		logger.Warnf("instance update failed: %s", err)

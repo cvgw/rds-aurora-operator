@@ -35,13 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-const (
-	aki     = ""
-	sak     = ""
-	roleArn = ""
-	profile = "dev"
-)
-
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
 }
@@ -101,9 +94,8 @@ func (r *ReconcileSubnetGroup) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	spec := instance.Spec
-	region := spec.Region
 
-	sess := provider.NewSession(aki, sak, region, roleArn, profile)
+	sess := provider.NewSession()
 	svc := rds.New(sess)
 
 	group, err := subnet_group.UpdateOrCreateDBSubnetGroup(svc, spec.Name, spec.Description, spec.Subnets)

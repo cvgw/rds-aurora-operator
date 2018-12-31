@@ -26,6 +26,7 @@ import (
 	rdsv1alpha1 "github.com/cvgw/rds-aurora-operator/pkg/apis/rds/v1alpha1"
 	"github.com/cvgw/rds-aurora-operator/pkg/lib/provider"
 	clusterProvider "github.com/cvgw/rds-aurora-operator/pkg/lib/provider/cluster"
+	"github.com/cvgw/rds-aurora-operator/pkg/lib/service"
 	clusterService "github.com/cvgw/rds-aurora-operator/pkg/lib/service/cluster"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,19 +36,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-)
-
-const (
-	aki               = ""
-	sak               = ""
-	roleArn           = ""
-	profile           = "dev"
-	region            = "us-west-2"
-	unprovisioned     = "unprovisioned"
-	provisioning      = "provisioning"
-	provisioned       = "ready"
-	dbClusterReady    = "available"
-	requiredReadyTime = 120 * 1000000000
 )
 
 // USER ACTION REQUIRED: update cmd/manager/main.go to call this rds.Add(mgr) to install this Controller
@@ -91,6 +79,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	logger.Info("reconcile")
 
+	result := reconcile.Result{}
 	instance := &rdsv1alpha1.Cluster{}
 
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
@@ -103,63 +92,51 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
-	result := reconcile.Result{}
+	spec := instance.Spec
+	status := instance.Status
+	state := status.State
 
-	copy := instance
-	spec := copy.Spec
-	state := copy.Status.State
-
-	sess := provider.NewSession(aki, sak, region, roleArn, profile)
+	sess := provider.NewSession()
 	svc := rds.New(sess)
 
 	logger.Debugf("current state is %s", state)
 	switch state {
 	case "":
-		logger.Debugf("setting state to %s", unprovisioned)
-		copy.Status.State = unprovisioned
-		//result.RequeueAfter = (10 * time.Second)
-	case unprovisioned:
-		logger.Debug("setting state to %s", provisioning)
-		copy.Status.State = provisioning
+		status.State = service.ChangeState(logger, service.Unprovisioned)
+	case service.Unprovisioned:
+		status.State = service.ChangeState(logger, service.Provisioning)
 
 		dbCluster, err := findOrCreateCluster(logger, svc, spec)
 		if err != nil {
-			logger.Warnf("error during find or creat db cluster: %s", err)
+			logger.Warnf("error during find or create db cluster: %s", err)
 			return reconcile.Result{}, err
 		}
 
 		logger.Debug(dbCluster)
-	case provisioning:
+	case service.Provisioning:
 		dbCluster, err := clusterProvider.FindDBCluster(svc, spec.Id)
 		if err != nil {
 			logger.Warnf("error retrieving db cluster: %s", err)
 			return reconcile.Result{}, err
 		}
 
-		if *dbCluster.Status == dbClusterReady {
-			log.Debug("db cluster is ready")
+		logger.Debug(dbCluster)
 
-			if copy.Status.ReadySince == 0 {
-				ready := time.Now().UnixNano()
-				log.Debugf("setting ready since %d", ready)
-				copy.Status.ReadySince = ready
-			}
+		if *dbCluster.Status == service.DBClusterReady {
+			log.Debug("db resource is ready")
 
-			readyTime := time.Now().UnixNano() - copy.Status.ReadySince
-			log.Debugf("readyTime %d", readyTime)
-			if readyTime >= requiredReadyTime {
-				log.Debugf("setting state to %s", provisioned)
-				copy.Status.State = provisioned
-			}
+			status.ReadySince = service.CalculateReadySince(logger, status.ReadySince)
+			status.State = service.StateFromReadySince(logger, status.ReadySince)
 		} else {
-			copy.Status.ReadySince = 0
+			log.Debug("db resource is not ready")
+			status.ReadySince = 0
 		}
 
 		result.RequeueAfter = 10 * time.Second
-	default:
 	}
 
-	err = r.Status().Update(context.TODO(), copy)
+	instance.Status = status
+	err = r.Status().Update(context.TODO(), instance)
 	if err != nil {
 		logger.Warnf("instance update failed: %s", err)
 		return reconcile.Result{}, err

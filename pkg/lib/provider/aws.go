@@ -5,7 +5,16 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 )
 
-func NewSession(aki, sak, region, roleArn, profile string) *session.Session {
+const (
+	aki     = ""
+	sak     = ""
+	roleArn = ""
+	profile = "dev"
+	region  = "us-west-2"
+)
+
+//func NewSession(aki, sak, region, roleArn, profile string) *session.Session {
+func NewSession() *session.Session {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		Config:  aws.Config{Region: aws.String(region)},
 		Profile: profile,
