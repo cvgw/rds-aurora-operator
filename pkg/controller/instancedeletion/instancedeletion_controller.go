@@ -101,6 +101,10 @@ func (r *ReconcileInstanceDeletion) Reconcile(request reconcile.Request) (reconc
 
 	instanceList := &rdsv1alpha1.InstanceList{}
 	err = r.List(context.TODO(), &client.ListOptions{}, instanceList)
+	if err != nil {
+		logger.Warnf("could not list instances: %s", err)
+		return reconcile.Result{}, err
+	}
 
 	for _, i := range instanceList.Items {
 		if i.Spec.Id == spec.InstanceId {

@@ -72,6 +72,7 @@ type ReconcileClusterDeletion struct {
 	scheme *runtime.Scheme
 }
 
+// +kubebuilder:rbac:groups=rds.nomsmon.com,resources=instances,verbs=get;list;watch
 // +kubebuilder:rbac:groups=rds.nomsmon.com,resources=clusters,verbs=get;list;watch
 // +kubebuilder:rbac:groups=rds.nomsmon.com,resources=clusterdeletions,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileClusterDeletion) Reconcile(request reconcile.Request) (reconcile.Result, error) {
@@ -100,6 +101,10 @@ func (r *ReconcileClusterDeletion) Reconcile(request reconcile.Request) (reconci
 
 	clusterList := &rdsv1alpha1.ClusterList{}
 	err = r.List(context.TODO(), &client.ListOptions{}, clusterList)
+	if err != nil {
+		logger.Warnf("could not list clusters: %v", err)
+		return reconcile.Result{RequeueAfter: 5 * time.Second}, err
+	}
 
 	for _, cluster := range clusterList.Items {
 		if cluster.Spec.Id == spec.ClusterId {
@@ -107,6 +112,22 @@ func (r *ReconcileClusterDeletion) Reconcile(request reconcile.Request) (reconci
 			logger.Warn(err)
 
 			return reconcile.Result{RequeueAfter: 5 * time.Second}, err
+		}
+	}
+
+	instanceList := &rdsv1alpha1.InstanceList{}
+	err = r.List(context.TODO(), &client.ListOptions{}, instanceList)
+	if err != nil {
+		logger.Warnf("could not list instances: %s", err)
+		return reconcile.Result{}, err
+	}
+
+	for _, i := range instanceList.Items {
+		if i.Spec.ClusterId == spec.ClusterId {
+			err := errors.New("cluster still in use, cannot delete")
+			logger.Warn(err)
+
+			return reconcile.Result{}, err
 		}
 	}
 

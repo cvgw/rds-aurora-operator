@@ -67,6 +67,8 @@ type ReconcileSubnetGroupDeletion struct {
 	scheme *runtime.Scheme
 }
 
+// +kubebuilder:rbac:groups=rds.nomsmon.com,resources=clusters,verbs=get;list;watch
+// +kubebuilder:rbac:groups=rds.nomsmon.com,resources=subnetgroups,verbs=get;list;watch
 // +kubebuilder:rbac:groups=rds.nomsmon.com,resources=subnetgroupdeletions,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileSubnetGroupDeletion) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	log.SetLevel(log.DebugLevel)
@@ -103,6 +105,22 @@ func (r *ReconcileSubnetGroupDeletion) Reconcile(request reconcile.Request) (rec
 	for _, subnetGroup := range subnetGroupList.Items {
 		if subnetGroup.Spec.Name == spec.SubnetGroupName {
 			err := errors.New("subnet group still exists, cannot delete")
+			logger.Warn(err)
+
+			return reconcile.Result{RequeueAfter: 5 * time.Second}, err
+		}
+	}
+
+	clusterList := &rdsv1alpha1.ClusterList{}
+	err = r.List(context.TODO(), &client.ListOptions{}, clusterList)
+	if err != nil {
+		logger.Warnf("could not list clusters: %v", err)
+		return reconcile.Result{RequeueAfter: 5 * time.Second}, err
+	}
+
+	for _, cluster := range clusterList.Items {
+		if cluster.Spec.SubnetGroupName == spec.SubnetGroupName {
+			err := errors.New("subnet group is still in use, cannot delete")
 			logger.Warn(err)
 
 			return reconcile.Result{RequeueAfter: 5 * time.Second}, err

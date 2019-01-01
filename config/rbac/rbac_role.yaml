@@ -19,6 +19,14 @@ rules:
 - apiGroups:
   - rds.nomsmon.com
   resources:
+  - instances
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - rds.nomsmon.com
+  resources:
   - clusters
   verbs:
   - get
@@ -120,6 +128,22 @@ rules:
   - update
   - patch
   - delete
+- apiGroups:
+  - rds.nomsmon.com
+  resources:
+  - clusters
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - rds.nomsmon.com
+  resources:
+  - subnetgroups
+  verbs:
+  - get
+  - list
+  - watch
 - apiGroups:
   - rds.nomsmon.com
   resources:
