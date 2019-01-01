@@ -4,6 +4,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -15,6 +16,52 @@ const (
 	RequiredReadyTime = 120 * 1000000000
 	WaitSleepTime     = 10
 )
+
+type StateHandler interface {
+	State() string
+	NoState() error
+	Unprovisioned() error
+	Provisioning() error
+	Provisioned() error
+	Logger() *log.Entry
+}
+
+func HandleState(handler StateHandler) (reconcile.Result, error) {
+	state := handler.State()
+	result := reconcile.Result{}
+
+	handler.Logger().Debugf("current state is %s", state)
+	switch state {
+	case "":
+		err := handler.NoState()
+		if err != nil {
+			return reconcile.Result{RequeueAfter: 1 * time.Second}, err
+		}
+	case Unprovisioned:
+		err := handler.Unprovisioned()
+		if err != nil {
+			return reconcile.Result{RequeueAfter: 1 * time.Second}, err
+		}
+	case Provisioning:
+		err := handler.Provisioning()
+		if err != nil {
+			return reconcile.Result{RequeueAfter: 1 * time.Second}, err
+		}
+
+		result.RequeueAfter = 10 * time.Second
+	case Provisioned:
+		err := handler.Provisioned()
+		if err != nil {
+			return reconcile.Result{RequeueAfter: 1 * time.Second}, err
+		}
+
+		if handler.State() == Provisioned {
+			result.RequeueAfter = 10 * time.Second
+		}
+	}
+
+	return result, nil
+}
 
 func ChangeState(logger *log.Entry, state string) string {
 	logger.Debugf("setting state to %s", state)
