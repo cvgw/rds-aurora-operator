@@ -18,14 +18,13 @@ package clusterdeletion
 
 import (
 	"context"
-	"time"
-
 	"errors"
+	"time"
 
 	"github.com/aws/aws-sdk-go/service/rds"
 	rdsv1alpha1 "github.com/cvgw/rds-aurora-operator/pkg/apis/rds/v1alpha1"
 	"github.com/cvgw/rds-aurora-operator/pkg/lib/provider"
-	clusterProvider "github.com/cvgw/rds-aurora-operator/pkg/lib/provider/cluster"
+	"github.com/cvgw/rds-aurora-operator/pkg/lib/service"
 	log "github.com/sirupsen/logrus"
 	kubeErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -77,11 +76,9 @@ type ReconcileClusterDeletion struct {
 // +kubebuilder:rbac:groups=rds.nomsmon.com,resources=clusterdeletions,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileClusterDeletion) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	log.SetLevel(log.DebugLevel)
-
 	logger := log.WithFields(log.Fields{
 		"controller": "cluster_deletion",
 	})
-
 	logger.Info("reconcile")
 
 	result := reconcile.Result{}
@@ -96,8 +93,10 @@ func (r *ReconcileClusterDeletion) Reconcile(request reconcile.Request) (reconci
 		return reconcile.Result{}, err
 	}
 
-	status := instance.Status
 	spec := instance.Spec
+	status := instance.Status
+	sess := provider.NewSession()
+	svc := rds.New(sess)
 
 	clusterList := &rdsv1alpha1.ClusterList{}
 	err = r.List(context.TODO(), &client.ListOptions{}, clusterList)
@@ -107,52 +106,28 @@ func (r *ReconcileClusterDeletion) Reconcile(request reconcile.Request) (reconci
 			err := errors.New("cluster resource still exists, cannot delete")
 			logger.Warn(err)
 
-			return reconcile.Result{}, err
+			return reconcile.Result{RequeueAfter: 5 * time.Second}, err
 		}
 	}
 
-	sess := provider.NewSession()
-	svc := rds.New(sess)
+	sHandler := &stateHandler{}
+	sHandler.SetLogger(logger).
+		SetSvc(svc).
+		SetSpec(spec).
+		SetStatus(&status)
 
-	state := status.State
-	logger.Debugf("current state is %s", state)
-	switch state {
-	case "":
-		logger.Debugf("setting state to %s", created)
-		status.State = created
-	case created:
-		logger.Debugf("setting state to %s", executing)
-		status.State = executing
-
-		logger.Debug("begining deletion")
-		if err := clusterProvider.DeleteDBCluster(svc, spec.ClusterId); err != nil {
-			logger.Warnf("error deleting cluster: %s", err)
-			return reconcile.Result{}, err
-		}
-	case executing:
-		dbCluster, err := clusterProvider.FindDBCluster(svc, spec.ClusterId)
-		if err != nil {
-			if err != clusterProvider.ClusterNotFoundErr {
-				logger.Warnf("error finding cluster being deleted: %s", err)
-				return reconcile.Result{}, err
-			}
-			logger.Debugf("cluster has been deleted: %s", err)
-			logger.Debugf("setting state to %s", completed)
-			status.State = completed
-		} else {
-			logger.Debug("cluster is still being deleted")
-			logger.Debug(dbCluster)
-		}
-		result.RequeueAfter = 10 * time.Second
-	default:
+	handler := &service.Handler{}
+	handler.SetStateHandler(sHandler)
+	result, err = service.Handle(*handler)
+	if err != nil {
+		return result, err
 	}
 
 	instance.Status = status
-
 	err = r.Status().Update(context.TODO(), instance)
 	if err != nil {
 		logger.Warnf("instance update failed: %s", err)
-		return reconcile.Result{}, err
+		return reconcile.Result{RequeueAfter: 1 * time.Second}, err
 	}
 
 	logger.Info("reconcile success")

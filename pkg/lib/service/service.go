@@ -3,6 +3,7 @@ package service
 import (
 	"time"
 
+	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -23,6 +24,51 @@ func PopulateValidationErr(prevErr, newErr error) error {
 		return newErr
 	}
 	return errors.Wrap(prevErr, newErr.Error())
+}
+
+type Handler struct {
+	sHandler StateHandler
+}
+
+func (h *Handler) SetStateHandler(sHandler StateHandler) *Handler {
+	h.sHandler = sHandler
+	return h
+}
+
+func (h *Handler) NoState() error {
+	h.sHandler.MutateState(Unprovisioned)
+
+	return h.sHandler.NoState()
+}
+
+func (h *Handler) Unprovisioned() error {
+	h.sHandler.MutateReadySince(0)
+	h.sHandler.MutateState(Provisioning)
+
+	return h.sHandler.Unprovisioned()
+}
+
+func (h *Handler) Provisioning() error {
+	HandleResourceStatus(h.sHandler, "")
+
+	return h.sHandler.Provisioning()
+}
+
+func (h *Handler) Provisioned() error {
+	return h.sHandler.Provisioned()
+}
+
+type BaseStateHandler struct {
+	Service *rds.RDS
+	Logr    *log.Entry
+}
+
+func (s *BaseStateHandler) Logger() *log.Entry {
+	return s.Logr
+}
+
+func (s *BaseStateHandler) Svc() *rds.RDS {
+	return s.Service
 }
 
 type StateHandler interface {
@@ -49,6 +95,43 @@ func HandleResourceStatus(handler StateHandler, resourceStatus string) {
 		handler.Logger().Debug("db resource is not ready")
 		handler.MutateReadySince(0)
 	}
+}
+
+func Handle(handler Handler) (reconcile.Result, error) {
+	state := handler.sHandler.State()
+	result := reconcile.Result{}
+
+	handler.sHandler.Logger().Debugf("current state is %s", state)
+	switch state {
+	case "":
+		err := handler.NoState()
+		if err != nil {
+			return reconcile.Result{RequeueAfter: 1 * time.Second}, err
+		}
+	case Unprovisioned:
+		err := handler.Unprovisioned()
+		if err != nil {
+			return reconcile.Result{RequeueAfter: 1 * time.Second}, err
+		}
+	case Provisioning:
+		err := handler.Provisioning()
+		if err != nil {
+			return reconcile.Result{RequeueAfter: 1 * time.Second}, err
+		}
+
+		result.RequeueAfter = 10 * time.Second
+	case Provisioned:
+		err := handler.Provisioned()
+		if err != nil {
+			return reconcile.Result{RequeueAfter: 1 * time.Second}, err
+		}
+
+		if handler.sHandler.State() == Provisioned {
+			result.RequeueAfter = 10 * time.Second
+		}
+	}
+
+	return result, nil
 }
 
 func HandleState(handler StateHandler) (reconcile.Result, error) {

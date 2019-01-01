@@ -34,7 +34,8 @@ type ClusterDeletionSpec struct {
 type ClusterDeletionStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	State string `json:"state,omitempty"`
+	State      string `json:"state,omitempty"`
+	ReadySince int64  `json:"ready_since,omitempty"`
 }
 
 // +genclient
