@@ -2,9 +2,11 @@ package cluster
 
 import (
 	rdsv1alpha1 "github.com/cvgw/rds-aurora-operator/pkg/apis/rds/v1alpha1"
+	"github.com/pkg/errors"
 
 	"github.com/aws/aws-sdk-go/service/rds"
 	factory "github.com/cvgw/rds-aurora-operator/pkg/lib/factory/cluster"
+	clusterProvider "github.com/cvgw/rds-aurora-operator/pkg/lib/provider/cluster"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -31,4 +33,77 @@ func CreateCluster(svc *rds.RDS, req CreateClusterRequest) (*rds.DBCluster, erro
 	log.Info(cluster)
 
 	return cluster, nil
+}
+
+func UpdateDBCluster(svc *rds.RDS, dbCluster *rds.DBCluster, spec rdsv1alpha1.ClusterSpec) error {
+	req := &clusterProvider.UpdateDBClusterRequest{}
+	req.SetCluster(dbCluster).
+		SetEngineVersion(spec.EngineVersion).
+		SetSecurityGroupIds(spec.SecurityGroupIds)
+
+	_, err := clusterProvider.UpdateDBCluster(svc, req)
+	return err
+}
+
+func ValidateCluster(svc *rds.RDS, dbCluster *rds.DBCluster, spec rdsv1alpha1.ClusterSpec) error {
+	var err error
+
+	if *dbCluster.DBClusterIdentifier != spec.Id {
+		err = populateValidationErr(err, errors.New("db cluster identifier does not match"))
+	}
+
+	if *dbCluster.Engine != spec.Engine {
+		err = populateValidationErr(err, errors.New("db engine does not match"))
+	}
+
+	if *dbCluster.EngineVersion != spec.EngineVersion {
+		err = populateValidationErr(err, errors.New("db engine version does not match"))
+	}
+
+	if *dbCluster.MasterUsername != spec.MasterUsername {
+		err = populateValidationErr(err, errors.New("db master user name does not match"))
+	}
+
+	if *dbCluster.DBSubnetGroup != spec.SubnetGroupName {
+		err = populateValidationErr(err, errors.New("db subnet group name does not match"))
+	}
+
+	dbSgIds := make([]*string, len(dbCluster.VpcSecurityGroups))
+	for i, sg := range dbCluster.VpcSecurityGroups {
+		dbSgIds[i] = sg.VpcSecurityGroupId
+	}
+
+	if !sgIdsMatch(dbSgIds, spec.SecurityGroupIds) {
+		err = populateValidationErr(err, errors.New("db security groups do not match"))
+	}
+
+	return err
+}
+
+func populateValidationErr(prevErr, newErr error) error {
+	if prevErr == nil {
+		return newErr
+	}
+	return errors.Wrap(prevErr, newErr.Error())
+}
+
+func sgIdsMatch(dbSgIds []*string, specSgIds []string) bool {
+	if len(dbSgIds) != len(specSgIds) {
+		return false
+	}
+
+	for _, sgId := range dbSgIds {
+		match := false
+		for _, specSgId := range specSgIds {
+			if *sgId == specSgId {
+				match = true
+				break
+			}
+		}
+		if match == false {
+			return false
+		}
+	}
+
+	return true
 }

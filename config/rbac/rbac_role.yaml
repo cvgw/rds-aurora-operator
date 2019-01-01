@@ -37,14 +37,6 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - rds.nomsmon.com
-  resources:
-  - clusters
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
   - ""
   resources:
   - services
@@ -57,17 +49,13 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - ""
+  - rds.nomsmon.com
   resources:
-  - endpoints
+  - clusters
   verbs:
   - get
   - list
   - watch
-  - create
-  - update
-  - patch
-  - delete
 - apiGroups:
   - rds.nomsmon.com
   resources:

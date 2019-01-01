@@ -76,7 +76,7 @@ func (u *UpdateDBClusterRequest) SetSecurityGroupIds(v []string) *UpdateDBCluste
 	return u
 }
 
-func UpdateDBCluster(svc *rds.RDS, req UpdateDBClusterRequest) (*rds.DBCluster, error) {
+func UpdateDBCluster(svc *rds.RDS, req *UpdateDBClusterRequest) (*rds.DBCluster, error) {
 	input := &rds.ModifyDBClusterInput{
 		ApplyImmediately:    aws.Bool(true),
 		DBClusterIdentifier: req.cluster.DBClusterIdentifier,

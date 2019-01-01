@@ -99,52 +99,36 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	sess := provider.NewSession()
 	svc := rds.New(sess)
 
+	sHandler := &stateHandler{}
+	sHandler.SetLogger(logger).
+		SetSvc(svc).
+		SetSpec(&spec).
+		SetStatus(&status)
+
 	logger.Debugf("current state is %s", state)
 	switch state {
 	case "":
 		status.State = service.ChangeState(logger, service.Unprovisioned)
 	case service.Unprovisioned:
-		status.State = service.ChangeState(logger, service.Provisioning)
-
-		dbCluster, err := findOrCreateCluster(logger, svc, spec)
+		err := sHandler.Unprovisioned()
 		if err != nil {
-			logger.Warnf("error during find or create db cluster: %s", err)
-			return reconcile.Result{}, err
+			return reconcile.Result{RequeueAfter: 1 * time.Second}, err
 		}
-
-		logger.Debug(dbCluster)
 	case service.Provisioning:
-		dbCluster, err := clusterProvider.FindDBCluster(svc, spec.Id)
+		err := sHandler.Provisioning()
 		if err != nil {
-			logger.Warnf("error retrieving db cluster: %s", err)
-			return reconcile.Result{}, err
-		}
-		logger.Debug(dbCluster)
-
-		if *dbCluster.Status == service.DBClusterReady {
-			log.Debug("db resource is ready")
-
-			status.ReadySince = service.CalculateReadySince(logger, status.ReadySince)
-			status.State = service.StateFromReadySince(logger, status.ReadySince)
-		} else {
-			log.Debug("db resource is not ready")
-			status.ReadySince = 0
+			return reconcile.Result{RequeueAfter: 1 * time.Second}, err
 		}
 
 		result.RequeueAfter = 10 * time.Second
 	case service.Provisioned:
-		dbCluster, err := clusterProvider.FindDBCluster(svc, spec.Id)
+		err := sHandler.Provisioned()
 		if err != nil {
-			logger.Warnf("error retrieving db cluster: %s", err)
-			return reconcile.Result{}, err
+			return reconcile.Result{RequeueAfter: 1 * time.Second}, err
 		}
-		logger.Debug(dbCluster)
 
-		if *dbCluster.Status == service.DBClusterReady {
-			logger.Debug("setting resource info in status")
-			status.DBClusterId = *dbCluster.DBClusterIdentifier
-			status.Endpoint = *dbCluster.Endpoint
-			status.ReaderEndpoint = *dbCluster.ReaderEndpoint
+		if status.State == service.Provisioned {
+			result.RequeueAfter = 10 * time.Second
 		}
 	}
 
@@ -152,11 +136,104 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	err = r.Status().Update(context.TODO(), instance)
 	if err != nil {
 		logger.Warnf("instance update failed: %s", err)
-		return reconcile.Result{}, err
+		return reconcile.Result{RequeueAfter: 1 * time.Second}, err
 	}
 
 	logger.Info("reconcile success")
 	return result, nil
+}
+
+type stateHandler struct {
+	logger *log.Entry
+	svc    *rds.RDS
+	spec   *rdsv1alpha1.ClusterSpec
+	status *rdsv1alpha1.ClusterStatus
+}
+
+func (s *stateHandler) SetLogger(v *log.Entry) *stateHandler {
+	s.logger = v
+	return s
+}
+
+func (s *stateHandler) SetSvc(v *rds.RDS) *stateHandler {
+	s.svc = v
+	return s
+}
+
+func (s *stateHandler) SetSpec(v *rdsv1alpha1.ClusterSpec) *stateHandler {
+	s.spec = v
+	return s
+}
+
+func (s *stateHandler) SetStatus(v *rdsv1alpha1.ClusterStatus) *stateHandler {
+	s.status = v
+	return s
+}
+
+func (s *stateHandler) Unprovisioned() error {
+	s.status.State = service.ChangeState(s.logger, service.Provisioning)
+
+	dbCluster, err := findOrCreateCluster(s.logger, s.svc, *s.spec)
+	if err != nil {
+		s.logger.Warnf("error during find or create db cluster: %s", err)
+		return err
+	}
+	s.logger.Debug(dbCluster)
+
+	err = clusterService.UpdateDBCluster(s.svc, dbCluster, *s.spec)
+	if err != nil {
+		s.logger.Warnf("error updating db cluster: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *stateHandler) Provisioning() error {
+	dbCluster, err := clusterProvider.FindDBCluster(s.svc, s.spec.Id)
+	if err != nil {
+		s.logger.Warnf("error retrieving db cluster: %s", err)
+		return err
+	}
+	s.logger.Debug(dbCluster)
+
+	if *dbCluster.Status == service.DBClusterReady {
+		s.logger.Debug("db resource is ready")
+
+		s.status.ReadySince = service.CalculateReadySince(s.logger, s.status.ReadySince)
+		s.status.State = service.StateFromReadySince(s.logger, s.status.ReadySince)
+	} else {
+		s.logger.Debug("db resource is not ready")
+		s.status.ReadySince = 0
+	}
+	return nil
+}
+
+func (s *stateHandler) Provisioned() error {
+	dbCluster, err := clusterProvider.FindDBCluster(s.svc, s.spec.Id)
+	if err != nil {
+		s.logger.Warnf("error retrieving db cluster: %s", err)
+		return err
+	}
+	s.logger.Debug(dbCluster)
+
+	err = clusterService.ValidateCluster(s.svc, dbCluster, *s.spec)
+	if err != nil {
+		s.logger.Warn(err)
+		s.status.State = service.ChangeState(s.logger, service.Unprovisioned)
+	} else {
+		if *dbCluster.Status == service.DBClusterReady {
+			s.logger.Debug("setting resource info in status")
+			s.status.DBClusterId = *dbCluster.DBClusterIdentifier
+			s.status.Endpoint = *dbCluster.Endpoint
+			s.status.ReaderEndpoint = *dbCluster.ReaderEndpoint
+		} else {
+			s.logger.Debug("db resource is not ready")
+			s.status.State = service.ChangeState(s.logger, service.Unprovisioned)
+		}
+	}
+
+	return nil
 }
 
 func findOrCreateCluster(
