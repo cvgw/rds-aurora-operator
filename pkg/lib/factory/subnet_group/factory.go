@@ -4,36 +4,23 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/rds"
+	subnetGroupProvider "github.com/cvgw/rds-aurora-operator/pkg/lib/provider/subnet_group"
 	log "github.com/sirupsen/logrus"
 )
 
 func UpdateOrCreateDBSubnetGroup(svc *rds.RDS, groupName, groupDescription string, subnets []string) (*rds.DBSubnetGroup, error) {
 	var subnetGroup *rds.DBSubnetGroup
 
-	subnetGroupName := aws.String(groupName)
-
-	descGroupsInput := &rds.DescribeDBSubnetGroupsInput{
-		DBSubnetGroupName: subnetGroupName,
-	}
-
-	descGroupsOutput, err := svc.DescribeDBSubnetGroups(descGroupsInput)
+	subnetGroup, err := subnetGroupProvider.FindDBSubnetGroup(svc, groupName)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case rds.ErrCodeDBSubnetGroupNotFoundFault:
-				log.Info(rds.ErrCodeDBSubnetGroupNotFoundFault, aerr.Error())
-
-				return createSubnetGroup(svc, subnetGroupName, groupDescription, subnets)
-			default:
-				log.Warn(aerr)
-				return nil, aerr
-			}
-		} else {
+		if err != subnetGroupProvider.SubnetGroupNotFoundErr {
+			return nil, err
+		}
+		subnetGroup, err = createSubnetGroup(svc, aws.String(groupName), groupDescription, subnets)
+		if err != nil {
 			return nil, err
 		}
 	}
-
-	subnetGroup = descGroupsOutput.DBSubnetGroups[0]
 
 	return subnetGroup, nil
 }

@@ -1,0 +1,8 @@
+apiVersion: rds.nomsmon.com/v1alpha1
+kind: SubnetGroupDeletion
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: subnetgroupdeletion-sample
+spec:
+  subnet_group_name: test-subnet-group-k8s
