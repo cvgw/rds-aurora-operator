@@ -3,6 +3,7 @@ package service
 import (
 	"time"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -17,13 +18,37 @@ const (
 	WaitSleepTime     = 10
 )
 
+func PopulateValidationErr(prevErr, newErr error) error {
+	if prevErr == nil {
+		return newErr
+	}
+	return errors.Wrap(prevErr, newErr.Error())
+}
+
 type StateHandler interface {
 	State() string
+	ReadySince() int64
+	MutateState(string)
+	MutateReadySince(int64)
 	NoState() error
+	ResourceReady(string) bool
+
 	Unprovisioned() error
 	Provisioning() error
 	Provisioned() error
 	Logger() *log.Entry
+}
+
+func HandleResourceStatus(handler StateHandler, resourceStatus string) {
+	if handler.ResourceReady(resourceStatus) {
+		handler.Logger().Debug("db resource is ready")
+
+		handler.MutateReadySince(CalculateReadySince(handler.Logger(), handler.ReadySince()))
+		handler.MutateState(StateFromReadySince(handler.Logger(), handler.ReadySince()))
+	} else {
+		handler.Logger().Debug("db resource is not ready")
+		handler.MutateReadySince(0)
+	}
 }
 
 func HandleState(handler StateHandler) (reconcile.Result, error) {

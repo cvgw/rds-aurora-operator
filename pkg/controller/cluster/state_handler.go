@@ -44,20 +44,58 @@ func (s *stateHandler) State() string {
 	return s.status.State
 }
 
+func (s *stateHandler) ReadySince() int64 {
+	return s.status.ReadySince
+}
+
+func (s *stateHandler) ResourceReady(resourceStatus string) bool {
+	return resourceStatus == service.DBClusterReady
+}
+
+func (s *stateHandler) MutateReadySince(readySince int64) {
+	s.status.ReadySince = readySince
+}
+
+func (s *stateHandler) MutateState(state string) {
+	s.status.State = service.ChangeState(s.logger, state)
+}
+
 func (s *stateHandler) NoState() error {
-	s.status.State = service.ChangeState(s.logger, service.Unprovisioned)
+	s.MutateState(service.Unprovisioned)
 	return nil
 }
 
 func (s *stateHandler) Unprovisioned() error {
-	s.status.State = service.ChangeState(s.logger, service.Provisioning)
+	s.MutateReadySince(0)
+	s.MutateState(service.Provisioning)
 
-	dbCluster, err := findOrCreateCluster(s.logger, s.svc, s.spec)
+	dbCluster, err := clusterProvider.FindDBCluster(s.svc, s.spec.Id)
 	if err != nil {
-		s.logger.Warnf("error during find or create db cluster: %s", err)
-		return err
+		if err != clusterProvider.ClusterNotFoundErr {
+			s.logger.Warn(err)
+			return err
+		}
+
+		s.logger.Debug("cluster does not exist yet")
+		req := clusterService.CreateClusterRequest{
+			Spec: s.spec,
+		}
+
+		dbCluster, err = clusterService.CreateCluster(s.svc, req)
+		if err != nil {
+			s.logger.Warn(err)
+			return err
+		}
+		s.logger.Debug(dbCluster)
+
+		return nil
 	}
 	s.logger.Debug(dbCluster)
+
+	if *dbCluster.Status != service.DBClusterReady {
+		log.Debug("db resource is currently being modified")
+		return nil
+	}
 
 	err = clusterService.UpdateDBCluster(s.svc, dbCluster, s.spec)
 	if err != nil {
@@ -65,6 +103,7 @@ func (s *stateHandler) Unprovisioned() error {
 		return err
 	}
 
+	log.Debug("db resource updated")
 	return nil
 }
 
@@ -76,15 +115,7 @@ func (s *stateHandler) Provisioning() error {
 	}
 	s.logger.Debug(dbCluster)
 
-	if *dbCluster.Status == service.DBClusterReady {
-		s.logger.Debug("db resource is ready")
-
-		s.status.ReadySince = service.CalculateReadySince(s.logger, s.status.ReadySince)
-		s.status.State = service.StateFromReadySince(s.logger, s.status.ReadySince)
-	} else {
-		s.logger.Debug("db resource is not ready")
-		s.status.ReadySince = 0
-	}
+	service.HandleResourceStatus(s, *dbCluster.Status)
 	return nil
 }
 
@@ -98,47 +129,20 @@ func (s *stateHandler) Provisioned() error {
 
 	err = clusterService.ValidateCluster(s.svc, dbCluster, s.spec)
 	if err != nil {
-		s.logger.Warn(err)
+		s.logger.Info(err)
 		s.status.State = service.ChangeState(s.logger, service.Unprovisioned)
-	} else {
-		if *dbCluster.Status == service.DBClusterReady {
-			s.logger.Debug("setting resource info in status")
-			s.status.DBClusterId = *dbCluster.DBClusterIdentifier
-			s.status.Endpoint = *dbCluster.Endpoint
-			s.status.ReaderEndpoint = *dbCluster.ReaderEndpoint
-		} else {
-			s.logger.Debug("db resource is not ready")
-			s.status.State = service.ChangeState(s.logger, service.Unprovisioned)
-		}
+		return nil
 	}
 
+	if *dbCluster.Status == service.DBClusterReady {
+		s.logger.Debug("setting resource info in status")
+		s.status.DBClusterId = *dbCluster.DBClusterIdentifier
+		s.status.Endpoint = *dbCluster.Endpoint
+		s.status.ReaderEndpoint = *dbCluster.ReaderEndpoint
+		return nil
+	}
+
+	s.logger.Debug("db resource is not ready")
+	s.status.State = service.ChangeState(s.logger, service.Unprovisioned)
 	return nil
-}
-
-func findOrCreateCluster(
-	logger *log.Entry, svc *rds.RDS, spec rdsv1alpha1.ClusterSpec,
-) (*rds.DBCluster, error) {
-
-	dbCluster, err := clusterProvider.FindDBCluster(svc, spec.Id)
-	if err != nil {
-		if err != clusterProvider.ClusterNotFoundErr {
-			logger.Warn(err)
-			return nil, err
-		}
-
-		logger.Info("cluster does not exist yet")
-		req := clusterService.CreateClusterRequest{
-			Spec: spec,
-		}
-		dbCluster, err := clusterService.CreateCluster(svc, req)
-		if err != nil {
-			logger.Warn(err)
-			return nil, err
-		}
-
-		return dbCluster, nil
-	}
-	logger.Info("cluster exists")
-
-	return dbCluster, nil
 }

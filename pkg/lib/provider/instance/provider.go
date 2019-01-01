@@ -77,7 +77,6 @@ func (req *UpdateDBInstanceRequest) SetClass(v string) *UpdateDBInstanceRequest 
 
 func UpdateDBClusterInstance(svc *rds.RDS, req UpdateDBInstanceRequest) error {
 	input := &rds.ModifyDBInstanceInput{
-		AllocatedStorage: aws.Int64(int64(req.allocatedStorage)),
 		ApplyImmediately: aws.Bool(true),
 		//BackupRetentionPeriod:      aws.Int64(1),
 		DBInstanceClass:      aws.String(req.class),
@@ -85,6 +84,10 @@ func UpdateDBClusterInstance(svc *rds.RDS, req UpdateDBInstanceRequest) error {
 		//MasterUserPassword:         aws.String("mynewpassword"),
 		//PreferredBackupWindow:      aws.String("04:00-04:30"),
 		//PreferredMaintenanceWindow: aws.String("Tue:05:00-Tue:05:30"),
+	}
+
+	if req.clusterId == "" {
+		input.AllocatedStorage = aws.Int64(int64(req.allocatedStorage))
 	}
 
 	result, err := svc.ModifyDBInstance(input)

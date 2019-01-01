@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/rds"
 	factory "github.com/cvgw/rds-aurora-operator/pkg/lib/factory/cluster"
 	clusterProvider "github.com/cvgw/rds-aurora-operator/pkg/lib/provider/cluster"
+	"github.com/cvgw/rds-aurora-operator/pkg/lib/service"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -49,23 +50,23 @@ func ValidateCluster(svc *rds.RDS, dbCluster *rds.DBCluster, spec rdsv1alpha1.Cl
 	var err error
 
 	if *dbCluster.DBClusterIdentifier != spec.Id {
-		err = populateValidationErr(err, errors.New("db cluster identifier does not match"))
+		err = service.PopulateValidationErr(err, errors.New("db cluster identifier does not match"))
 	}
 
 	if *dbCluster.Engine != spec.Engine {
-		err = populateValidationErr(err, errors.New("db engine does not match"))
+		err = service.PopulateValidationErr(err, errors.New("db engine does not match"))
 	}
 
 	if *dbCluster.EngineVersion != spec.EngineVersion {
-		err = populateValidationErr(err, errors.New("db engine version does not match"))
+		err = service.PopulateValidationErr(err, errors.New("db engine version does not match"))
 	}
 
 	if *dbCluster.MasterUsername != spec.MasterUsername {
-		err = populateValidationErr(err, errors.New("db master user name does not match"))
+		err = service.PopulateValidationErr(err, errors.New("db master user name does not match"))
 	}
 
 	if *dbCluster.DBSubnetGroup != spec.SubnetGroupName {
-		err = populateValidationErr(err, errors.New("db subnet group name does not match"))
+		err = service.PopulateValidationErr(err, errors.New("db subnet group name does not match"))
 	}
 
 	dbSgIds := make([]*string, len(dbCluster.VpcSecurityGroups))
@@ -74,17 +75,10 @@ func ValidateCluster(svc *rds.RDS, dbCluster *rds.DBCluster, spec rdsv1alpha1.Cl
 	}
 
 	if !sgIdsMatch(dbSgIds, spec.SecurityGroupIds) {
-		err = populateValidationErr(err, errors.New("db security groups do not match"))
+		err = service.PopulateValidationErr(err, errors.New("db security groups do not match"))
 	}
 
 	return err
-}
-
-func populateValidationErr(prevErr, newErr error) error {
-	if prevErr == nil {
-		return newErr
-	}
-	return errors.Wrap(prevErr, newErr.Error())
 }
 
 func sgIdsMatch(dbSgIds []*string, specSgIds []string) bool {

@@ -44,13 +44,30 @@ func (s *stateHandler) State() string {
 	return s.status.State
 }
 
+func (s *stateHandler) ReadySince() int64 {
+	return s.status.ReadySince
+}
+
+func (s *stateHandler) ResourceReady(resourceStatus string) bool {
+	return resourceStatus == service.DBInstanceReady
+}
+
+func (s *stateHandler) MutateReadySince(readySince int64) {
+	s.status.ReadySince = readySince
+}
+
+func (s *stateHandler) MutateState(state string) {
+	s.status.State = service.ChangeState(s.logger, state)
+}
+
 func (s *stateHandler) NoState() error {
 	s.status.State = service.ChangeState(s.logger, service.Unprovisioned)
 	return nil
 }
 
 func (s *stateHandler) Unprovisioned() error {
-	s.status.State = service.ChangeState(s.logger, service.Provisioning)
+	s.MutateReadySince(0)
+	s.MutateState(service.Provisioning)
 
 	dbInstance, err := instanceProvider.FindDBClusterInstance(s.svc, s.spec.Id)
 	if err != nil {
@@ -70,8 +87,16 @@ func (s *stateHandler) Unprovisioned() error {
 			s.logger.Warnf("error creating db instance: %s", err)
 			return err
 		}
+		s.logger.Debug(dbInstance)
+
+		return nil
 	}
 	s.logger.Debug(dbInstance)
+
+	if *dbInstance.DBInstanceStatus != service.DBInstanceReady {
+		log.Debug("db resource is currently being modified")
+		return nil
+	}
 
 	err = instanceService.UpdateDBInstance(s.svc, s.spec)
 	if err != nil {
@@ -79,6 +104,7 @@ func (s *stateHandler) Unprovisioned() error {
 		return err
 	}
 
+	log.Debug("db resource updated")
 	return nil
 }
 
@@ -90,16 +116,7 @@ func (s *stateHandler) Provisioning() error {
 	}
 	s.logger.Debug(dbInstance)
 
-	if *dbInstance.DBInstanceStatus == service.DBInstanceReady {
-		s.logger.Debug("db resource is ready")
-
-		s.status.ReadySince = service.CalculateReadySince(s.logger, s.status.ReadySince)
-		s.status.State = service.StateFromReadySince(s.logger, s.status.ReadySince)
-	} else {
-		s.logger.Debug("db resource is not ready")
-		s.status.ReadySince = 0
-	}
-
+	service.HandleResourceStatus(s, *dbInstance.DBInstanceStatus)
 	return nil
 }
 
@@ -111,12 +128,22 @@ func (s *stateHandler) Provisioned() error {
 	}
 	s.logger.Debug(dbInstance)
 
+	err = instanceService.ValidateInstance(s.svc, dbInstance, s.spec)
+	if err != nil {
+		s.logger.Info(err)
+		s.status.State = service.ChangeState(s.logger, service.Unprovisioned)
+		return nil
+	}
+
 	if *dbInstance.DBInstanceStatus == service.DBInstanceReady {
 		s.logger.Debug("setting resource info in status")
 		s.status.DBInstanceId = *dbInstance.DBInstanceIdentifier
 		s.status.DBClusterId = *dbInstance.DBClusterIdentifier
 		s.status.Endpoint = *dbInstance.Endpoint.Address
+		return nil
 	}
 
+	s.logger.Debug("db resource is not ready")
+	s.status.State = service.ChangeState(s.logger, service.Unprovisioned)
 	return nil
 }
