@@ -85,7 +85,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Info("delete")
+			logger.Debug("delete")
 			return reconcile.Result{}, nil
 		}
 		logger.Warn(err)
