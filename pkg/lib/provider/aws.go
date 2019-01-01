@@ -1,41 +1,51 @@
 package provider
 
 import (
+	"os"
+
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/cvgw/rds-aurora-operator/pkg/lib/environment"
 )
 
 const (
-	aki     = ""
-	sak     = ""
-	roleArn = ""
-	profile = "dev"
-	region  = "us-west-2"
+	profile       = "dev"
+	defaultRegion = "us-west-2"
 )
 
-//func NewSession(aki, sak, region, roleArn, profile string) *session.Session {
+func NewSessionFromEnv(env environment.AwsSessionEnv) *session.Session {
+	return newKeySession(env.Aki, env.Sak, env.Region, env.RoleArn)
+}
+
 func NewSession() *session.Session {
+	if os.Getenv("AWS_KEY_SESSION") == "true" {
+		env := environment.AwsSessionEnv{}.PopulateEnv()
+		return NewSessionFromEnv(env)
+	}
+	return newSessionFromProfile()
+}
+
+func newSessionFromProfile() *session.Session {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		Config:  aws.Config{Region: aws.String(region)},
+		Config:  aws.Config{Region: aws.String(defaultRegion)},
 		Profile: profile,
 	}))
 
 	return sess
-	//creds := credentials.NewStaticCredentials(aki, sak, "")
-	//cfg := aws.NewConfig().WithCredentials(creds).WithRegion(region)
-	//sess, err := session.NewSession(cfg)
-	//if err != nil {
-	//  return err
-	//}
-	//creds = stscreds.NewCredentials(sess, roleArn)
+}
 
-	//assumeCfg := cfg.Copy()
-	//assumeCfg.Credentials = creds
+func newKeySession(aki, sak, region, roleArn string) *session.Session {
+	creds := credentials.NewStaticCredentials(aki, sak, "")
+	cfg := aws.NewConfig().WithCredentials(creds).WithRegion(region)
 
-	//assumeSess, err := session.NewSession(assumeCfg)
-	//if err != nil {
-	//  return err
-	//}
+	sess := session.Must(session.NewSession(cfg))
+	creds = stscreds.NewCredentials(sess, roleArn)
 
-	//return assumeSess
+	assumeCfg := cfg.Copy()
+	assumeCfg.Credentials = creds
+
+	assumeSess := session.Must(session.NewSession(assumeCfg))
+	return assumeSess
 }
