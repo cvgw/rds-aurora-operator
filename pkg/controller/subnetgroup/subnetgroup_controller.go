@@ -18,13 +18,14 @@ package subnetgroup
 
 import (
 	"context"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go/service/rds"
 	rdsv1alpha1 "github.com/cvgw/rds-aurora-operator/pkg/apis/rds/v1alpha1"
-	"github.com/cvgw/rds-aurora-operator/pkg/lib/factory/subnet_group"
 	"github.com/cvgw/rds-aurora-operator/pkg/lib/provider"
+	"github.com/cvgw/rds-aurora-operator/pkg/lib/service"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -76,12 +77,13 @@ type ReconcileSubnetGroup struct {
 
 // +kubebuilder:rbac:groups=rds.nomsmon.com,resources=subnetgroups,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileSubnetGroup) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	log.SetLevel(log.DebugLevel)
 	logger := log.WithFields(log.Fields{
 		"controller": "subnet_group",
 	})
-
 	logger.Info("reconcile")
 
+	result := reconcile.Result{}
 	instance := &rdsv1alpha1.SubnetGroup{}
 
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
@@ -90,20 +92,34 @@ func (r *ReconcileSubnetGroup) Reconcile(request reconcile.Request) (reconcile.R
 			logger.Debug("delete")
 			return reconcile.Result{}, nil
 		}
+		logger.Warn(err)
 		return reconcile.Result{}, err
 	}
 
 	spec := instance.Spec
-
+	status := instance.Status
 	sess := provider.NewSession()
 	svc := rds.New(sess)
 
-	group, err := subnet_group.UpdateOrCreateDBSubnetGroup(svc, spec.Name, spec.Description, spec.Subnets)
+	sHandler := &stateHandler{}
+	sHandler.SetLogger(logger).
+		SetSvc(svc).
+		SetSpec(spec).
+		SetStatus(&status)
+
+	result, err = service.HandleState(sHandler)
 	if err != nil {
-		return reconcile.Result{}, err
+		return result, err
 	}
-	logger.Debug(group)
+
+	instance.Status = status
+	err = r.Status().Update(context.TODO(), instance)
+	if err != nil {
+		logger.Warnf("instance update failed: %s", err)
+		return reconcile.Result{RequeueAfter: 1 * time.Second}, err
+	}
 
 	logger.Info("reconcile success")
-	return reconcile.Result{}, nil
+	return result, nil
+
 }

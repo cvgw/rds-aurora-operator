@@ -37,6 +37,8 @@ type SubnetGroupSpec struct {
 type SubnetGroupStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	State      string `json:"state,omitempty"`
+	ReadySince int64  `json:"ready_since,omitempty"`
 }
 
 // +genclient
@@ -44,6 +46,7 @@ type SubnetGroupStatus struct {
 
 // SubnetGroup is the Schema for the subnetgroups API
 // +k8s:openapi-gen=true
+// +kubebuilder:subresource:status
 type SubnetGroup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
