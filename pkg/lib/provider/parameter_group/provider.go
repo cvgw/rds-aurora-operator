@@ -172,3 +172,32 @@ func UpdateDBParameterGroup(svc *rds.RDS, req UpdateRequest) error {
 
 	return nil
 }
+
+func DeleteDBParameterGroup(svc *rds.RDS, groupName string) error {
+	input := &rds.DeleteDBParameterGroupInput{
+		DBParameterGroupName: aws.String(groupName),
+	}
+
+	result, err := svc.DeleteDBParameterGroup(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case rds.ErrCodeInvalidDBParameterGroupStateFault:
+				log.Warn(rds.ErrCodeInvalidDBParameterGroupStateFault, aerr.Error())
+				return err
+			case rds.ErrCodeDBParameterGroupNotFoundFault:
+				log.Warn(rds.ErrCodeDBParameterGroupNotFoundFault, aerr.Error())
+				return NotFoundErr
+			default:
+				log.Warn(aerr.Error())
+				return err
+			}
+		} else {
+			log.Warn(err.Error())
+			return err
+		}
+	}
+	log.Debug(result)
+
+	return nil
+}
