@@ -119,6 +119,18 @@ rules:
 - apiGroups:
   - rds.nomsmon.com
   resources:
+  - parametergroups
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - rds.nomsmon.com
+  resources:
   - subnetgroups
   verbs:
   - get
