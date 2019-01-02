@@ -5,5 +5,4 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: parametergroupdeletion-sample
 spec:
-  # Add fields here
-  foo: bar
+  parameter_group_name: test-parameter-group-k8s

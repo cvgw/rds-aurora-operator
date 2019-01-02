@@ -5,5 +5,9 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: parametergroup-sample
 spec:
-  # Add fields here
-  foo: bar
+  name: test-parameter-group-k8s
+  family: "MySQL5.7"
+  description: "test parameter group created by k8s"
+  parameters:
+  - name: "wait_timeout"
+    value: "666"
