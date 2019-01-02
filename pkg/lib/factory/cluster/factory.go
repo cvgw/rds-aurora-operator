@@ -7,13 +7,14 @@ import (
 )
 
 type NewDBClusterFactoryInput struct {
-	ClusterId        string
-	Engine           string
-	EngineVersion    string
-	MasterUsername   string
-	MasterUserPass   string
-	SecurityGroupIds []string
-	SubnetGroupName  string
+	ClusterId          string
+	Engine             string
+	EngineVersion      string
+	MasterUsername     string
+	MasterUserPass     string
+	SecurityGroupIds   []string
+	SubnetGroupName    string
+	ParameterGroupName string
 }
 
 func NewDBClusterFactory(input NewDBClusterFactoryInput) *dbClusterFactory {

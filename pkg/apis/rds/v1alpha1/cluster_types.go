@@ -27,13 +27,14 @@ import (
 type ClusterSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Id               string   `json:"id,omitempty"`
-	Engine           string   `json:"engine,omitempty"`
-	EngineVersion    string   `json:"engine_version,omitempty"`
-	MasterUsername   string   `json:"master_username,omitempty"`
-	MasterUserPass   string   `json:"master_user_pass,omitempty"`
-	SecurityGroupIds []string `json:"security_group_ids,omitempty"`
-	SubnetGroupName  string   `json:"subnet_group_name,omitempty"`
+	Id                 string   `json:"id,omitempty"`
+	Engine             string   `json:"engine,omitempty"`
+	EngineVersion      string   `json:"engine_version,omitempty"`
+	MasterUsername     string   `json:"master_username,omitempty"`
+	MasterUserPass     string   `json:"master_user_pass,omitempty"`
+	SecurityGroupIds   []string `json:"security_group_ids,omitempty"`
+	SubnetGroupName    string   `json:"subnet_group_name,omitempty"`
+	ParameterGroupName string   `json:"parameter_group_name,omitempty"`
 }
 
 // ClusterStatus defines the observed state of Cluster

@@ -11,6 +11,7 @@ spec:
   master_username: admin
   master_user_pass: hello-world-123456
   subnet_group_name: test-subnet-group-k8s
+  parameter_group_name: test-parameter-group-k8s
   security_group_ids:
   - sg-022acecc22d9eb339
 

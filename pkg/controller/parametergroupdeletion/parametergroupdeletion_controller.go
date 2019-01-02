@@ -109,6 +109,22 @@ func (r *ReconcileParameterGroupDeletion) Reconcile(request reconcile.Request) (
 		}
 	}
 
+	clusterList := &rdsv1alpha1.ClusterList{}
+	err = r.List(context.TODO(), &client.ListOptions{}, clusterList)
+	if err != nil {
+		logger.Warnf("could not list clusters: %v", err)
+		return reconcile.Result{RequeueAfter: 5 * time.Second}, err
+	}
+
+	for _, cluster := range clusterList.Items {
+		if cluster.Spec.ParameterGroupName == spec.ParameterGroupName {
+			err := errors.New("parameter group is still in use, cannot delete")
+			logger.Warn(err)
+
+			return reconcile.Result{RequeueAfter: 5 * time.Second}, err
+		}
+	}
+
 	sHandler := &stateHandler{}
 	sHandler.SetLogger(logger).
 		SetSvc(svc).

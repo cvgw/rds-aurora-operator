@@ -17,13 +17,14 @@ type CreateClusterRequest struct {
 
 func CreateCluster(svc *rds.RDS, req CreateClusterRequest) (*rds.DBCluster, error) {
 	input := factory.NewDBClusterFactoryInput{
-		ClusterId:        req.Spec.Id,
-		Engine:           req.Spec.Engine,
-		EngineVersion:    req.Spec.EngineVersion,
-		MasterUsername:   req.Spec.MasterUsername,
-		MasterUserPass:   req.Spec.MasterUserPass,
-		SecurityGroupIds: req.Spec.SecurityGroupIds,
-		SubnetGroupName:  req.Spec.SubnetGroupName,
+		ClusterId:          req.Spec.Id,
+		Engine:             req.Spec.Engine,
+		EngineVersion:      req.Spec.EngineVersion,
+		MasterUsername:     req.Spec.MasterUsername,
+		MasterUserPass:     req.Spec.MasterUserPass,
+		SecurityGroupIds:   req.Spec.SecurityGroupIds,
+		SubnetGroupName:    req.Spec.SubnetGroupName,
+		ParameterGroupName: req.Spec.ParameterGroupName,
 	}
 
 	clusterFactory := factory.NewDBClusterFactory(input)
@@ -40,7 +41,8 @@ func UpdateDBCluster(svc *rds.RDS, dbCluster *rds.DBCluster, spec rdsv1alpha1.Cl
 	req := &clusterProvider.UpdateDBClusterRequest{}
 	req.SetCluster(dbCluster).
 		SetEngineVersion(spec.EngineVersion).
-		SetSecurityGroupIds(spec.SecurityGroupIds)
+		SetSecurityGroupIds(spec.SecurityGroupIds).
+		SetParameterGroupName(spec.ParameterGroupName)
 
 	_, err := clusterProvider.UpdateDBCluster(svc, req)
 	return err
@@ -67,6 +69,10 @@ func ValidateCluster(svc *rds.RDS, dbCluster *rds.DBCluster, spec rdsv1alpha1.Cl
 
 	if *dbCluster.DBSubnetGroup != spec.SubnetGroupName {
 		err = service.PopulateValidationErr(err, errors.New("db subnet group name does not match"))
+	}
+
+	if *dbCluster.DBClusterParameterGroup != spec.ParameterGroupName {
+		err = service.PopulateValidationErr(err, errors.New("db parameter group name does not match"))
 	}
 
 	dbSgIds := make([]*string, len(dbCluster.VpcSecurityGroups))

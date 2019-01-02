@@ -45,10 +45,11 @@ func FindDBCluster(svc *rds.RDS, clusterId string) (*rds.DBCluster, error) {
 }
 
 type UpdateDBClusterRequest struct {
-	cluster          *rds.DBCluster
-	engineVersion    *string
-	masterUserPass   *string
-	securityGroupIds []*string
+	cluster            *rds.DBCluster
+	engineVersion      *string
+	masterUserPass     *string
+	securityGroupIds   []*string
+	parameterGroupName *string
 }
 
 func (u *UpdateDBClusterRequest) SetCluster(v *rds.DBCluster) *UpdateDBClusterRequest {
@@ -76,11 +77,17 @@ func (u *UpdateDBClusterRequest) SetSecurityGroupIds(v []string) *UpdateDBCluste
 	return u
 }
 
+func (u *UpdateDBClusterRequest) SetParameterGroupName(v string) *UpdateDBClusterRequest {
+	u.parameterGroupName = aws.String(v)
+	return u
+}
+
 func UpdateDBCluster(svc *rds.RDS, req *UpdateDBClusterRequest) (*rds.DBCluster, error) {
 	input := &rds.ModifyDBClusterInput{
-		ApplyImmediately:    aws.Bool(true),
-		DBClusterIdentifier: req.cluster.DBClusterIdentifier,
-		VpcSecurityGroupIds: req.securityGroupIds,
+		ApplyImmediately:            aws.Bool(true),
+		DBClusterIdentifier:         req.cluster.DBClusterIdentifier,
+		VpcSecurityGroupIds:         req.securityGroupIds,
+		DBClusterParameterGroupName: req.parameterGroupName,
 	}
 
 	if *req.cluster.EngineVersion != *req.engineVersion {
