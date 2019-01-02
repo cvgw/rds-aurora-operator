@@ -23,8 +23,8 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// ParameterGroupSpec defines the desired state of ParameterGroup
-type ParameterGroupSpec struct {
+// ClusterParameterGroupSpec defines the desired state of ClusterParameterGroup
+type ClusterParameterGroupSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	Name        string      `json:"name,omitempty"`
@@ -33,8 +33,8 @@ type ParameterGroupSpec struct {
 	Parameters  []parameter `json:"parameters,omitempty"`
 }
 
-// ParameterGroupStatus defines the observed state of ParameterGroup
-type ParameterGroupStatus struct {
+// ClusterParameterGroupStatus defines the observed state of ClusterParameterGroup
+type ClusterParameterGroupStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	State      string `json:"state,omitempty"`
@@ -44,26 +44,26 @@ type ParameterGroupStatus struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ParameterGroup is the Schema for the parametergroups API
+// ClusterParameterGroup is the Schema for the clusterparametergroups API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
-type ParameterGroup struct {
+type ClusterParameterGroup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ParameterGroupSpec   `json:"spec,omitempty"`
-	Status ParameterGroupStatus `json:"status,omitempty"`
+	Spec   ClusterParameterGroupSpec   `json:"spec,omitempty"`
+	Status ClusterParameterGroupStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ParameterGroupList contains a list of ParameterGroup
-type ParameterGroupList struct {
+// ClusterParameterGroupList contains a list of ClusterParameterGroup
+type ClusterParameterGroupList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ParameterGroup `json:"items"`
+	Items           []ClusterParameterGroup `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&ParameterGroup{}, &ParameterGroupList{})
+	SchemeBuilder.Register(&ClusterParameterGroup{}, &ClusterParameterGroupList{})
 }

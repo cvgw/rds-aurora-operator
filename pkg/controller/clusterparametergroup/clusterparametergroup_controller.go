@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package parametergroup
+package clusterparametergroup
 
 import (
 	"context"
@@ -41,16 +41,16 @@ func Add(mgr manager.Manager) error {
 }
 
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileParameterGroup{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileClusterParameterGroup{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
-	c, err := controller.New("parametergroup-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("clusterparametergroup-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	err = c.Watch(&source.Kind{Type: &rdsv1alpha1.ParameterGroup{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &rdsv1alpha1.ClusterParameterGroup{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -58,23 +58,23 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-var _ reconcile.Reconciler = &ReconcileParameterGroup{}
+var _ reconcile.Reconciler = &ReconcileClusterParameterGroup{}
 
-type ReconcileParameterGroup struct {
+type ReconcileClusterParameterGroup struct {
 	client.Client
 	scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=rds.nomsmon.com,resources=parametergroups,verbs=get;list;watch;create;update;patch;delete
-func (r *ReconcileParameterGroup) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+// +kubebuilder:rbac:groups=rds.nomsmon.com,resources=clusterparametergroups,verbs=get;list;watch;create;update;patch;delete
+func (r *ReconcileClusterParameterGroup) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	log.SetLevel(log.DebugLevel)
 	logger := log.WithFields(log.Fields{
-		"controller": "parameter_group",
+		"controller": "cluster_parameter_group",
 	})
 	logger.Info("reconcile")
 
 	result := reconcile.Result{}
-	instance := &rdsv1alpha1.ParameterGroup{}
+	instance := &rdsv1alpha1.ClusterParameterGroup{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {

@@ -45,6 +45,18 @@ rules:
   - patch
   - delete
 - apiGroups:
+  - rds.nomsmon.com
+  resources:
+  - clusterparametergroups
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
   - ""
   resources:
   - services
