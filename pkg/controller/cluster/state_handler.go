@@ -83,7 +83,7 @@ func (s *stateHandler) Unprovisioned() error {
 
 		dbCluster, err = clusterService.CreateCluster(s.svc, req)
 		if err != nil {
-			s.logger.Warn(err)
+			s.logger.Warnf("error creating db cluster: %s", err)
 			return err
 		}
 		s.logger.Debug(dbCluster)

@@ -131,5 +131,4 @@ func (r *ReconcileParameterGroupDeletion) Reconcile(request reconcile.Request) (
 
 	logger.Info("reconcile success")
 	return result, nil
-
 }

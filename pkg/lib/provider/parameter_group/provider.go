@@ -138,7 +138,7 @@ type Param struct {
 
 func UpdateDBParameterGroup(svc *rds.RDS, req UpdateRequest) error {
 	input := &rds.ModifyDBParameterGroupInput{
-		DBParameterGroupName: aws.String("mymysqlparametergroup"),
+		DBParameterGroupName: aws.String(req.name),
 		Parameters:           req.parameters,
 		//Parameters: []*rds.Parameter{
 		//  {

@@ -18,8 +18,13 @@ package parametergroup
 
 import (
 	"context"
+	"time"
 
+	"github.com/aws/aws-sdk-go/service/rds"
 	rdsv1alpha1 "github.com/cvgw/rds-aurora-operator/pkg/apis/rds/v1alpha1"
+	"github.com/cvgw/rds-aurora-operator/pkg/lib/provider"
+	"github.com/cvgw/rds-aurora-operator/pkg/lib/service"
+	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -62,6 +67,13 @@ type ReconcileParameterGroup struct {
 
 // +kubebuilder:rbac:groups=rds.nomsmon.com,resources=parametergroups,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileParameterGroup) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	log.SetLevel(log.DebugLevel)
+	logger := log.WithFields(log.Fields{
+		"controller": "parameter_group",
+	})
+	logger.Info("reconcile")
+
+	result := reconcile.Result{}
 	instance := &rdsv1alpha1.ParameterGroup{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
@@ -71,5 +83,31 @@ func (r *ReconcileParameterGroup) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
-	return reconcile.Result{}, nil
+	spec := instance.Spec
+	status := instance.Status
+	sess := provider.NewSession()
+	svc := rds.New(sess)
+
+	sHandler := &stateHandler{}
+	sHandler.SetLogger(logger).
+		SetSvc(svc).
+		SetSpec(spec).
+		SetStatus(&status)
+
+	handler := &service.Handler{}
+	handler.SetStateHandler(sHandler)
+	result, err = service.Handle(*handler)
+	if err != nil {
+		return result, err
+	}
+
+	instance.Status = status
+	err = r.Status().Update(context.TODO(), instance)
+	if err != nil {
+		logger.Warnf("instance update failed: %s", err)
+		return reconcile.Result{RequeueAfter: 1 * time.Second}, err
+	}
+
+	logger.Info("reconcile success")
+	return result, nil
 }
