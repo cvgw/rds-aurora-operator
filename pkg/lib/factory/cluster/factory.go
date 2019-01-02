@@ -27,6 +27,7 @@ func NewDBClusterFactory(input NewDBClusterFactoryInput) *dbClusterFactory {
 	f.masterUserPass = aws.String(input.MasterUserPass)
 
 	f.subnetGroupName = aws.String(input.SubnetGroupName)
+	f.parameterGroupName = aws.String(input.ParameterGroupName)
 
 	sIds := make([]*string, 0)
 	for _, i := range input.SecurityGroupIds {
@@ -38,24 +39,26 @@ func NewDBClusterFactory(input NewDBClusterFactoryInput) *dbClusterFactory {
 }
 
 type dbClusterFactory struct {
-	clusterIdentifier *string
-	subnetGroupName   *string
-	securityGroupIds  []*string
-	engine            *string
-	engineVersion     *string
-	masterUsername    *string
-	masterUserPass    *string
+	clusterIdentifier  *string
+	subnetGroupName    *string
+	securityGroupIds   []*string
+	engine             *string
+	engineVersion      *string
+	masterUsername     *string
+	masterUserPass     *string
+	parameterGroupName *string
 }
 
 func (f *dbClusterFactory) CreateDBCluster(svc *rds.RDS) (*rds.DBCluster, error) {
 	clusterInput := &rds.CreateDBClusterInput{
-		DBClusterIdentifier: f.clusterIdentifier,
-		Engine:              f.engine,
-		EngineVersion:       f.engineVersion,
-		MasterUsername:      f.masterUsername,
-		MasterUserPassword:  f.masterUserPass,
-		DBSubnetGroupName:   f.subnetGroupName,
-		VpcSecurityGroupIds: f.securityGroupIds,
+		DBClusterIdentifier:         f.clusterIdentifier,
+		Engine:                      f.engine,
+		EngineVersion:               f.engineVersion,
+		MasterUsername:              f.masterUsername,
+		MasterUserPassword:          f.masterUserPass,
+		DBSubnetGroupName:           f.subnetGroupName,
+		VpcSecurityGroupIds:         f.securityGroupIds,
+		DBClusterParameterGroupName: f.parameterGroupName,
 	}
 
 	clusterOutput, err := svc.CreateDBCluster(clusterInput)
