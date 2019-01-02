@@ -67,6 +67,7 @@ type ReconcileParameterGroupDeletion struct {
 	scheme *runtime.Scheme
 }
 
+// +kubebuilder:rbac:groups=rds.nomsmon.com,resources=instances,verbs=get;list;watch
 // +kubebuilder:rbac:groups=rds.nomsmon.com,resources=parametergroupdeletions,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileParameterGroupDeletion) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	log.SetLevel(log.DebugLevel)
@@ -109,19 +110,19 @@ func (r *ReconcileParameterGroupDeletion) Reconcile(request reconcile.Request) (
 		}
 	}
 
-	clusterList := &rdsv1alpha1.ClusterList{}
-	err = r.List(context.TODO(), &client.ListOptions{}, clusterList)
+	instanceList := &rdsv1alpha1.InstanceList{}
+	err = r.List(context.TODO(), &client.ListOptions{}, instanceList)
 	if err != nil {
-		logger.Warnf("could not list clusters: %v", err)
-		return reconcile.Result{RequeueAfter: 5 * time.Second}, err
+		logger.Warnf("could not list instances: %s", err)
+		return reconcile.Result{}, err
 	}
 
-	for _, cluster := range clusterList.Items {
-		if cluster.Spec.ParameterGroupName == spec.ParameterGroupName {
+	for _, i := range instanceList.Items {
+		if i.Spec.ParameterGroupName == spec.ParameterGroupName {
 			err := errors.New("parameter group is still in use, cannot delete")
 			logger.Warn(err)
 
-			return reconcile.Result{RequeueAfter: 5 * time.Second}, err
+			return reconcile.Result{}, err
 		}
 	}
 

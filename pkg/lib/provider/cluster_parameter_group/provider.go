@@ -31,8 +31,8 @@ func FindDBClusterParameterGroup(svc *rds.RDS, paramGroupName string) (*rds.DBCl
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
-			case rds.ErrCodeDBClusterParameterGroupNotFoundFault:
-				log.Warn(rds.ErrCodeDBClusterParameterGroupNotFoundFault, aerr.Error())
+			case rds.ErrCodeDBParameterGroupNotFoundFault:
+				log.Debug(rds.ErrCodeDBParameterGroupNotFoundFault, aerr.Error())
 				return nil, NotFoundErr
 			default:
 				log.Warn(aerr.Error())
@@ -153,8 +153,8 @@ func UpdateDBClusterParameterGroup(svc *rds.RDS, req UpdateRequest) error {
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
-			case rds.ErrCodeDBClusterParameterGroupNotFoundFault:
-				log.Warn(rds.ErrCodeDBClusterParameterGroupNotFoundFault, aerr.Error())
+			case rds.ErrCodeDBParameterGroupNotFoundFault:
+				log.Warn(rds.ErrCodeDBParameterGroupNotFoundFault, aerr.Error())
 				return aerr
 			case rds.ErrCodeInvalidDBParameterGroupStateFault:
 				log.Warn(rds.ErrCodeInvalidDBParameterGroupStateFault, aerr.Error())

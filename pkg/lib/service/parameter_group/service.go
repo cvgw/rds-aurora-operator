@@ -52,17 +52,19 @@ func UpdateParameterGroup(svc *rds.RDS, spec rdsv1alpha1.ParameterGroupSpec) err
 func ValidateParameterGroup(
 	svc *rds.RDS, dbParamGroup *rds.DBParameterGroup, spec rdsv1alpha1.ParameterGroupSpec,
 ) error {
-	var err error
+	var validateErr error
 
 	if *dbParamGroup.DBParameterGroupFamily != spec.Family {
-		err = service.PopulateValidationErr(
-			err, errors.New("db parameter group family does not match"),
+		validateErr = service.PopulateValidationErr(
+			validateErr, errors.New(`db parameter group family does not match
+							this error cannot be resolved by the controller
+							family can only be set during creation`),
 		)
 	}
 
 	if *dbParamGroup.Description != spec.Description {
-		err = service.PopulateValidationErr(
-			err, errors.New("db parameter group description does not match"),
+		validateErr = service.PopulateValidationErr(
+			validateErr, errors.New("db parameter group description does not match"),
 		)
 	}
 
@@ -81,7 +83,7 @@ func ValidateParameterGroup(
 	}
 	validParams := make([]string, 0)
 	pageNum := 0
-	err = svc.DescribeDBParametersPages(
+	err := svc.DescribeDBParametersPages(
 		input,
 		func(page *rds.DescribeDBParametersOutput, lastPage bool) bool {
 			pageNum++
@@ -105,12 +107,12 @@ func ValidateParameterGroup(
 	}
 
 	if len(validParams) != len(spec.Parameters) {
-		err = service.PopulateValidationErr(
-			err, errors.New("db parameter group parameters do not match"),
+		validateErr = service.PopulateValidationErr(
+			validateErr, errors.New("db parameter group parameters do not match"),
 		)
 	}
 
-	return err
+	return validateErr
 }
 
 func validateParams(

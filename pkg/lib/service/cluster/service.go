@@ -24,7 +24,7 @@ func CreateCluster(svc *rds.RDS, req CreateClusterRequest) (*rds.DBCluster, erro
 		MasterUserPass:     req.Spec.MasterUserPass,
 		SecurityGroupIds:   req.Spec.SecurityGroupIds,
 		SubnetGroupName:    req.Spec.SubnetGroupName,
-		ParameterGroupName: req.Spec.ParameterGroupName,
+		ParameterGroupName: req.Spec.ClusterParameterGroupName,
 	}
 
 	clusterFactory := factory.NewDBClusterFactory(input)
@@ -42,7 +42,7 @@ func UpdateDBCluster(svc *rds.RDS, dbCluster *rds.DBCluster, spec rdsv1alpha1.Cl
 	req.SetCluster(dbCluster).
 		SetEngineVersion(spec.EngineVersion).
 		SetSecurityGroupIds(spec.SecurityGroupIds).
-		SetParameterGroupName(spec.ParameterGroupName)
+		SetParameterGroupName(spec.ClusterParameterGroupName)
 
 	_, err := clusterProvider.UpdateDBCluster(svc, req)
 	return err
@@ -71,8 +71,8 @@ func ValidateCluster(svc *rds.RDS, dbCluster *rds.DBCluster, spec rdsv1alpha1.Cl
 		err = service.PopulateValidationErr(err, errors.New("db subnet group name does not match"))
 	}
 
-	if *dbCluster.DBClusterParameterGroup != spec.ParameterGroupName {
-		err = service.PopulateValidationErr(err, errors.New("db parameter group name does not match"))
+	if spec.ClusterParameterGroupName != "" && *dbCluster.DBClusterParameterGroup != spec.ClusterParameterGroupName {
+		err = service.PopulateValidationErr(err, errors.New("db cluster parameter group name does not match"))
 	}
 
 	dbSgIds := make([]*string, len(dbCluster.VpcSecurityGroups))
@@ -88,22 +88,9 @@ func ValidateCluster(svc *rds.RDS, dbCluster *rds.DBCluster, spec rdsv1alpha1.Cl
 }
 
 func sgIdsMatch(dbSgIds []*string, specSgIds []string) bool {
-	if len(dbSgIds) != len(specSgIds) {
-		return false
+	sg := make([]string, len(dbSgIds))
+	for i, sgId := range dbSgIds {
+		sg[i] = *sgId
 	}
-
-	for _, sgId := range dbSgIds {
-		match := false
-		for _, specSgId := range specSgIds {
-			if *sgId == specSgId {
-				match = true
-				break
-			}
-		}
-		if match == false {
-			return false
-		}
-	}
-
-	return true
+	return service.SliceEqual(sg, specSgIds)
 }

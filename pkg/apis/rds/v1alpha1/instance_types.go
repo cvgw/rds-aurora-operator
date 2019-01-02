@@ -27,11 +27,12 @@ import (
 type InstanceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Id               string `json:"id,omitempty"`
-	ClusterId        string `json:"cluster_id,omitempty"`
-	AllocatedStorage int    `json:"allocated_storage,omitempty"`
-	Engine           string `json:"engine,omitempty"`
-	Class            string `json:"class,omitempty"`
+	Id                 string `json:"id,omitempty"`
+	ClusterId          string `json:"cluster_id,omitempty"`
+	AllocatedStorage   int    `json:"allocated_storage,omitempty"`
+	Engine             string `json:"engine,omitempty"`
+	Class              string `json:"class,omitempty"`
+	ParameterGroupName string `json:"parameter_group_name,omitempty"`
 }
 
 // InstanceStatus defines the observed state of Instance

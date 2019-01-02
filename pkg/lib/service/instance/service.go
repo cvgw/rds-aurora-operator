@@ -21,7 +21,8 @@ func CreateDBInstance(svc *rds.RDS, req CreateInstanceRequest) (*rds.DBInstance,
 		SetClusterIdentifier(req.Spec.ClusterId).
 		SetEngine(req.Spec.Engine).
 		SetAllocatedStorage(req.Spec.AllocatedStorage).
-		SetInstanceClass(req.Spec.Class)
+		SetInstanceClass(req.Spec.Class).
+		SetParameterGroupName(req.Spec.ParameterGroupName)
 
 	return f.CreateDBClusterInstance()
 }
@@ -32,7 +33,8 @@ func UpdateDBInstance(svc *rds.RDS, spec rdsv1alpha1.InstanceSpec) error {
 		SetClusterId(spec.ClusterId).
 		SetEngine(spec.Engine).
 		SetAllocatedStorage(spec.AllocatedStorage).
-		SetClass(spec.Class)
+		SetClass(spec.Class).
+		SetParameterGroupName(spec.ParameterGroupName)
 
 	return instanceProvider.UpdateDBClusterInstance(svc, *req)
 }
@@ -55,6 +57,27 @@ func ValidateInstance(svc *rds.RDS, dbInstance *rds.DBInstance, spec rdsv1alpha1
 	if *dbInstance.DBInstanceClass != spec.Class {
 		err = service.PopulateValidationErr(err, errors.New("db instance class does not match"))
 	}
+
+	if spec.ParameterGroupName != "" {
+		present := false
+		for _, g := range dbInstance.DBParameterGroups {
+			if spec.ParameterGroupName == *g.DBParameterGroupName {
+				present = true
+				break
+			}
+		}
+		if !present {
+			err = service.PopulateValidationErr(err, errors.New("db instance parameter groups do not match"))
+		}
+	}
+
+	//paramsGroups := make([]string, 0)
+	//for _, g := range dbInstance.DBParameterGroups {
+	//  paramsGroups = append(paramsGroup, g.DBParameterGroupName)
+	//}
+	//if !service.SliceEqual(paramGroups, spec.ParameterGroupNames) {
+	//  err = service.PopulateValidationErr(err, errors.New("db instance parameter groups do not match"))
+	//}
 
 	return err
 }

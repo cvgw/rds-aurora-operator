@@ -32,7 +32,7 @@ func FindDBParameterGroup(svc *rds.RDS, paramGroupName string) (*rds.DBParameter
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case rds.ErrCodeDBParameterGroupNotFoundFault:
-				log.Warn(rds.ErrCodeDBParameterGroupNotFoundFault, aerr.Error())
+				log.Info(rds.ErrCodeDBParameterGroupNotFoundFault, aerr.Error())
 				return nil, NotFoundErr
 			default:
 				log.Warn(aerr.Error())
@@ -183,10 +183,10 @@ func DeleteDBParameterGroup(svc *rds.RDS, groupName string) error {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case rds.ErrCodeInvalidDBParameterGroupStateFault:
-				log.Warn(rds.ErrCodeInvalidDBParameterGroupStateFault, aerr.Error())
+				log.Info(rds.ErrCodeInvalidDBParameterGroupStateFault, aerr.Error())
 				return err
 			case rds.ErrCodeDBParameterGroupNotFoundFault:
-				log.Warn(rds.ErrCodeDBParameterGroupNotFoundFault, aerr.Error())
+				log.Debug(rds.ErrCodeDBParameterGroupNotFoundFault, aerr.Error())
 				return NotFoundErr
 			default:
 				log.Warn(aerr.Error())

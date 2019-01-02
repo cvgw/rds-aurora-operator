@@ -52,17 +52,17 @@ func UpdateClusterParameterGroup(svc *rds.RDS, spec rdsv1alpha1.ClusterParameter
 func ValidateClusterParameterGroup(
 	svc *rds.RDS, dbParamGroup *rds.DBClusterParameterGroup, spec rdsv1alpha1.ClusterParameterGroupSpec,
 ) error {
-	var err error
+	var validateErr error
 
 	if *dbParamGroup.DBParameterGroupFamily != spec.Family {
-		err = service.PopulateValidationErr(
-			err, errors.New("db cluster parameter group family does not match"),
+		validateErr = service.PopulateValidationErr(
+			validateErr, errors.New("db cluster parameter group family does not match"),
 		)
 	}
 
 	if *dbParamGroup.Description != spec.Description {
-		err = service.PopulateValidationErr(
-			err, errors.New("db cluster parameter group description does not match"),
+		validateErr = service.PopulateValidationErr(
+			validateErr, errors.New("db cluster parameter group description does not match"),
 		)
 	}
 
@@ -96,8 +96,8 @@ func ValidateClusterParameterGroup(
 	validParams = append(validParams, validateParams(result.Parameters, paramValidated)...)
 
 	if len(validParams) != len(spec.Parameters) {
-		err = service.PopulateValidationErr(
-			err, errors.New("db cluster parameter group parameters do not match"),
+		validateErr = service.PopulateValidationErr(
+			validateErr, errors.New("db cluster parameter group parameters do not match"),
 		)
 	}
 

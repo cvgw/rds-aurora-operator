@@ -5,5 +5,10 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: clusterparametergroup-sample
 spec:
-  # Add fields here
-  foo: bar
+  name: test-cluster-parameter-group-k8s
+  family: "aurora-mysql5.7"
+  description: "test cluster parameter group created by k8s"
+  parameters:
+  - name: "wait_timeout"
+    value: "666"
+

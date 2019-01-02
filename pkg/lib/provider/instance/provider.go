@@ -43,11 +43,12 @@ func FindDBClusterInstance(svc *rds.RDS, instanceId string) (*rds.DBInstance, er
 }
 
 type UpdateDBInstanceRequest struct {
-	id               string
-	clusterId        string
-	allocatedStorage int
-	engine           string
-	class            string
+	id                 string
+	clusterId          string
+	allocatedStorage   int
+	engine             string
+	class              string
+	parameterGroupName string
 }
 
 func (req *UpdateDBInstanceRequest) SetId(v string) *UpdateDBInstanceRequest {
@@ -75,12 +76,18 @@ func (req *UpdateDBInstanceRequest) SetClass(v string) *UpdateDBInstanceRequest 
 	return req
 }
 
+func (req *UpdateDBInstanceRequest) SetParameterGroupName(v string) *UpdateDBInstanceRequest {
+	req.parameterGroupName = v
+	return req
+}
+
 func UpdateDBClusterInstance(svc *rds.RDS, req UpdateDBInstanceRequest) error {
 	input := &rds.ModifyDBInstanceInput{
 		ApplyImmediately: aws.Bool(true),
 		//BackupRetentionPeriod:      aws.Int64(1),
 		DBInstanceClass:      aws.String(req.class),
 		DBInstanceIdentifier: aws.String(req.id),
+		DBParameterGroupName: aws.String(req.parameterGroupName),
 		//MasterUserPassword:         aws.String("mynewpassword"),
 		//PreferredBackupWindow:      aws.String("04:00-04:30"),
 		//PreferredMaintenanceWindow: aws.String("Tue:05:00-Tue:05:30"),

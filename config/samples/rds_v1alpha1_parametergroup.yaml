@@ -6,7 +6,7 @@ metadata:
   name: parametergroup-sample
 spec:
   name: test-parameter-group-k8s
-  family: "MySQL5.7"
+  family: "aurora-mysql5.7"
   description: "test parameter group created by k8s"
   parameters:
   - name: "wait_timeout"

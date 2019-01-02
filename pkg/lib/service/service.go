@@ -19,6 +19,27 @@ const (
 	WaitSleepTime     = 10
 )
 
+func SliceEqual(sliceA []string, sliceB []string) bool {
+	if len(sliceA) != len(sliceB) {
+		return false
+	}
+
+	for _, a := range sliceA {
+		match := false
+		for _, b := range sliceB {
+			if a == b {
+				match = true
+				break
+			}
+		}
+		if match == false {
+			return false
+		}
+	}
+
+	return true
+}
+
 func PopulateValidationErr(prevErr, newErr error) error {
 	if prevErr == nil {
 		return newErr

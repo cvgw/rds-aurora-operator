@@ -63,6 +63,7 @@ func (s *stateHandler) Unprovisioned() error {
 	group, err := clusterParamGroupProvider.FindDBClusterParameterGroup(s.Svc(), s.spec.Name)
 	if err != nil {
 		if err != clusterParamGroupProvider.NotFoundErr {
+			s.Logger().Warnf("error finding db cluster parameter group: %s", err)
 			return err
 		}
 

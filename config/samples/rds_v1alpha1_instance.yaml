@@ -10,3 +10,4 @@ spec:
   engine: aurora-mysql
   allocated_storage: 10
   class: db.t2.small
+  parameter_group_name: test-parameter-group-k8s
