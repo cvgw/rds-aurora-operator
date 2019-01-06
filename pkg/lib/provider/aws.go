@@ -1,13 +1,13 @@
 package provider
 
 import (
-	"os"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/cvgw/rds-aurora-operator/pkg/lib/environment"
+	log "github.com/sirupsen/logrus"
+	"os"
 )
 
 const (
@@ -21,9 +21,11 @@ func NewSessionFromEnv(env environment.AwsSessionEnv) *session.Session {
 
 func NewSession() *session.Session {
 	if os.Getenv("AWS_KEY_SESSION") == "true" {
+		log.Debug("building session from keys")
 		env := environment.AwsSessionEnv{}.PopulateEnv()
 		return NewSessionFromEnv(env)
 	}
+	log.Debug("building session from profile")
 	return newSessionFromProfile()
 }
 
