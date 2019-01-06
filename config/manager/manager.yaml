@@ -45,6 +45,17 @@ spec:
         - /root/manager
         image: controller:latest
         name: manager
+        env:
+        - name: AWS_KEY_SESSION
+          value: "false"
+        - name: AWS_ACCESS_KEY_ID
+          value: ""
+        - name: AWS_SECRET_ACCESS_KEY
+          value: ""
+        - name: AWS_REGION
+          value: ""
+        - name: AWS_ROLE_ARN
+          value: ""
         resources:
           limits:
             cpu: 100m
