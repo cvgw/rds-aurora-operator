@@ -1,0 +1,12 @@
+apiVersion: skaffold/v1beta2
+kind: Config
+build:
+  artifacts:
+  - image: kubernetes.service.consul:5000/controller
+  #local: {}
+deploy:
+  kubectl:
+    manifests:
+    - "./config/crds/*"
+  kustomize:
+    path: "./config/default"
