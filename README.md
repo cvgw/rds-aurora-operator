@@ -6,8 +6,14 @@ Built using kubebuilder
 # Requirements
 * golang
 * make
+* dep
 * kustomize
 * kubebuilder
+
+## Dep
+```
+./install_dep.sh
+```
 
 ## Kustomize
 ```

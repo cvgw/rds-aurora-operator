@@ -143,6 +143,14 @@ rules:
 - apiGroups:
   - rds.nomsmon.com
   resources:
+  - instances
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - rds.nomsmon.com
+  resources:
   - parametergroupdeletions
   verbs:
   - get

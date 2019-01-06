@@ -100,7 +100,7 @@ func (r *ReconcileParameterGroupDeletion) Reconcile(request reconcile.Request) (
 		return reconcile.Result{RequeueAfter: 5 * time.Second}, err
 	}
 
-	logger.Debugf("parameter groups: %s", parameterGroupList)
+	logger.Debugf("parameter groups: %v", parameterGroupList)
 	for _, parameterGroup := range parameterGroupList.Items {
 		if parameterGroup.Spec.Name == spec.ParameterGroupName {
 			err := errors.New("parameter group still exists, cannot delete")

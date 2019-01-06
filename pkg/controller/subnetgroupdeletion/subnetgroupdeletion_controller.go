@@ -101,7 +101,7 @@ func (r *ReconcileSubnetGroupDeletion) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{RequeueAfter: 5 * time.Second}, err
 	}
 
-	logger.Debugf("subnet groups: %s", subnetGroupList)
+	logger.Debugf("subnet groups: %v", subnetGroupList)
 	for _, subnetGroup := range subnetGroupList.Items {
 		if subnetGroup.Spec.Name == spec.SubnetGroupName {
 			err := errors.New("subnet group still exists, cannot delete")
