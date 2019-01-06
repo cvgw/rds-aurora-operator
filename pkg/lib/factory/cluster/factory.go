@@ -51,14 +51,18 @@ type dbClusterFactory struct {
 
 func (f *dbClusterFactory) CreateDBCluster(svc *rds.RDS) (*rds.DBCluster, error) {
 	clusterInput := &rds.CreateDBClusterInput{
-		DBClusterIdentifier:         f.clusterIdentifier,
-		Engine:                      f.engine,
-		EngineVersion:               f.engineVersion,
-		MasterUsername:              f.masterUsername,
-		MasterUserPassword:          f.masterUserPass,
-		DBSubnetGroupName:           f.subnetGroupName,
-		VpcSecurityGroupIds:         f.securityGroupIds,
-		DBClusterParameterGroupName: f.parameterGroupName,
+		DBClusterIdentifier: f.clusterIdentifier,
+		Engine:              f.engine,
+		EngineVersion:       f.engineVersion,
+		MasterUsername:      f.masterUsername,
+		MasterUserPassword:  f.masterUserPass,
+		DBSubnetGroupName:   f.subnetGroupName,
+		VpcSecurityGroupIds: f.securityGroupIds,
+		//DBClusterParameterGroupName: f.parameterGroupName,
+	}
+
+	if *f.parameterGroupName != "" {
+		clusterInput.DBClusterParameterGroupName = f.parameterGroupName
 	}
 
 	clusterOutput, err := svc.CreateDBCluster(clusterInput)
