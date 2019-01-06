@@ -1,0 +1,12 @@
+db_parameters:
+- name: "wait_timeout"
+  value: "666"
+aws:
+  region: us-west-2
+subnets:
+- subnet-0abac047f623bb542
+- subnet-0d2f8b773e635d8b9
+- subnet-0f30aa08c880eb80b
+security_group_ids:
+- sg-022acecc22d9eb339
+
