@@ -7,6 +7,7 @@ import (
 	"github.com/cvgw/rds-aurora-operator/pkg/lib/service"
 	clusterService "github.com/cvgw/rds-aurora-operator/pkg/lib/service/cluster"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type stateHandler struct {
@@ -18,6 +19,17 @@ type stateHandler struct {
 
 func (s *stateHandler) SetLogger(v *log.Entry) *stateHandler {
 	s.logger = v
+	return s
+}
+
+func (s *stateHandler) SetInstance(v runtime.Object) *stateHandler {
+	switch v.(type) {
+	case *rdsv1alpha1.Cluster:
+		i := v.(*rdsv1alpha1.Cluster)
+		s.SetSpec(i.Spec)
+		s.SetStatus(&i.Status)
+	}
+
 	return s
 }
 

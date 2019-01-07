@@ -17,16 +17,11 @@ limitations under the License.
 package cluster
 
 import (
-	"context"
-	"time"
-
 	"github.com/aws/aws-sdk-go/service/rds"
-	log "github.com/sirupsen/logrus"
-
 	rdsv1alpha1 "github.com/cvgw/rds-aurora-operator/pkg/apis/rds/v1alpha1"
 	"github.com/cvgw/rds-aurora-operator/pkg/lib/provider"
 	"github.com/cvgw/rds-aurora-operator/pkg/lib/service"
-	"k8s.io/apimachinery/pkg/api/errors"
+	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -70,46 +65,15 @@ type ReconcileCluster struct {
 func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	log.SetLevel(log.DebugLevel)
 	logger := log.WithFields(log.Fields{
-		"controller": "cluster",
+		"controller": controllerName,
 	})
 	logger.Info("reconcile")
-
-	result := reconcile.Result{}
 	instance := &rdsv1alpha1.Cluster{}
-
-	err := r.Get(context.TODO(), request.NamespacedName, instance)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Debug("delete")
-			return reconcile.Result{}, nil
-		}
-		logger.Warn(err)
-		return reconcile.Result{}, err
-	}
-
-	spec := instance.Spec
-	status := instance.Status
+	sHandler := &stateHandler{}
 	sess := provider.NewSession()
 	svc := rds.New(sess)
-
-	sHandler := &stateHandler{}
 	sHandler.SetLogger(logger).
 		SetSvc(svc).
-		SetSpec(spec).
-		SetStatus(&status)
-
-	result, err = service.HandleState(sHandler)
-	if err != nil {
-		return result, err
-	}
-
-	instance.Status = status
-	err = r.Status().Update(context.TODO(), instance)
-	if err != nil {
-		logger.Warnf("instance update failed: %s", err)
-		return reconcile.Result{RequeueAfter: 1 * time.Second}, err
-	}
-
-	logger.Info("reconcile success")
-	return result, nil
+		SetInstance(instance)
+	return service.Reconcile(r, sHandler, request, "cluster", instance)
 }

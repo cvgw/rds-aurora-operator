@@ -1,11 +1,15 @@
 package service
 
 import (
+	"context"
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	kubeErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -18,6 +22,33 @@ const (
 	RequiredReadyTime = 120 * 1000000000
 	WaitSleepTime     = 10
 )
+
+func Reconcile(r client.Client, sHandler StateHandler, request reconcile.Request, controllerName string, instance runtime.Object) (reconcile.Result, error) {
+	result := reconcile.Result{}
+
+	err := r.Get(context.TODO(), request.NamespacedName, instance)
+	if err != nil {
+		if kubeErrors.IsNotFound(err) {
+			sHandler.Logger().Debug("delete")
+			return reconcile.Result{}, nil
+		}
+		sHandler.Logger().Warn(err)
+		return reconcile.Result{}, err
+	}
+
+	result, err = HandleState(sHandler)
+	if err != nil {
+		return result, err
+	}
+
+	err = r.Status().Update(context.TODO(), instance)
+	if err != nil {
+		sHandler.Logger().Warnf("instance update failed: %s", err)
+		return reconcile.Result{RequeueAfter: 1 * time.Second}, err
+	}
+
+	return reconcile.Result{}, nil
+}
 
 func SliceEqual(sliceA []string, sliceB []string) bool {
 	if len(sliceA) != len(sliceB) {
