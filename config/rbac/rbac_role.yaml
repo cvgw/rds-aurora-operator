@@ -89,6 +89,46 @@ rules:
   - patch
   - delete
 - apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apps
+  resources:
+  - deployments/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - rds.nomsmon.com
+  resources:
+  - databaserestores
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - rds.nomsmon.com
+  resources:
+  - databaserestores/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
   - rds.nomsmon.com
   resources:
   - clusters
