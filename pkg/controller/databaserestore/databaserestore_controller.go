@@ -20,6 +20,7 @@ import (
 	"context"
 
 	rdsv1alpha1 "github.com/cvgw/rds-aurora-operator/pkg/apis/rds/v1alpha1"
+	"github.com/cvgw/rds-aurora-operator/pkg/lib/provider/database_restore"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -87,5 +88,6 @@ func (r *ReconcileDatabaseRestore) Reconcile(request reconcile.Request) (reconci
 		return reconcile.Result{}, err
 	}
 
+	database_restore.RestoreSQLFile(instance.Spec.Filepath)
 	return reconcile.Result{}, nil
 }

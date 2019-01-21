@@ -100,6 +100,14 @@
   version = "v0.1.0"
 
 [[projects]]
+  digest = "1:92d9d8d25bbab74ef8a3c546c121e24542ac984ccdc4f99678e06042a45e71f8"
+  name = "github.com/go-sql-driver/mysql"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "72cd26f257d44c1114970e19afddcd812016007e"
+  version = "v1.4.1"
+
+[[projects]]
   digest = "1:3e34b0a53d651b06655475eb488745c912596e08557a33b83d336aab41cb6fe9"
   name = "github.com/gobuffalo/envy"
   packages = ["."]
@@ -631,6 +639,7 @@
   name = "google.golang.org/appengine"
   packages = [
     ".",
+    "cloudsql",
     "internal",
     "internal/app_identity",
     "internal/base",
@@ -991,6 +1000,7 @@
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/rds",
     "github.com/emicklei/go-restful",
+    "github.com/go-sql-driver/mysql",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
     "github.com/pkg/errors",
@@ -1015,6 +1025,7 @@
     "sigs.k8s.io/controller-runtime/pkg/handler",
     "sigs.k8s.io/controller-runtime/pkg/manager",
     "sigs.k8s.io/controller-runtime/pkg/reconcile",
+    "sigs.k8s.io/controller-runtime/pkg/runtime/log",
     "sigs.k8s.io/controller-runtime/pkg/runtime/scheme",
     "sigs.k8s.io/controller-runtime/pkg/runtime/signals",
     "sigs.k8s.io/controller-runtime/pkg/source",

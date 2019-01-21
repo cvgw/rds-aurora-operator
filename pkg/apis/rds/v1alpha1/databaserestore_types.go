@@ -27,6 +27,7 @@ import (
 type DatabaseRestoreSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	Filepath string `json:"filepath,omitempty"`
 }
 
 // DatabaseRestoreStatus defines the observed state of DatabaseRestore

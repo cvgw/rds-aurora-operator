@@ -5,5 +5,4 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: databaserestore-sample
 spec:
-  # Add fields here
-  foo: bar
+  filepath: /Users/cwippern/Code/src/github.com/datacharmer/test_db/employees.sql

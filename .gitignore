@@ -25,3 +25,6 @@ zz_generated.*
 *~
 *.tar.gz
 .envrc
+tessst
+.terraform
+terraform.tfstate
