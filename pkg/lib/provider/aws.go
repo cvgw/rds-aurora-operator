@@ -26,7 +26,7 @@ func NewSession() *session.Session {
 		return NewSessionFromEnv(env)
 	}
 	log.Debug("building session from profile")
-	return newSessionFromProfile("arn:aws:iam::724781030999:role/cwippern-tf-dev-rds-operator20190106211818856400000002")
+	return newSessionFromProfile("")
 }
 
 func newSessionFromProfile(roleArn string) *session.Session {
