@@ -26,15 +26,17 @@ func NewSession() *session.Session {
 		return NewSessionFromEnv(env)
 	}
 	log.Debug("building session from profile")
-	return newSessionFromProfile()
+	return newSessionFromProfile("arn:aws:iam::724781030999:role/cwippern-tf-dev-rds-operator20190106211818856400000002")
 }
 
-func newSessionFromProfile() *session.Session {
+func newSessionFromProfile(roleArn string) *session.Session {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		Config:  aws.Config{Region: aws.String(defaultRegion)},
-		Profile: profile,
+		//Profile: profile,
 	}))
 
+	creds := stscreds.NewCredentials(sess, roleArn)
+	sess.Config.Credentials = creds
 	return sess
 }
 

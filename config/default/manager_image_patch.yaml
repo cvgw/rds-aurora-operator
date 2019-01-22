@@ -8,5 +8,11 @@ spec:
     spec:
       containers:
       # Change the value of image field below to your controller image URL
-      - image: IMAGE_URL
+      - image: kubernetes.service.consul:5000/rds-aurora-operator
         name: manager
+        imagePullPolicy: Always
+        env:
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP

@@ -11,7 +11,8 @@ COPY vendor/ vendor/
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager github.com/cvgw/rds-aurora-operator/cmd/manager
 
 # Copy the controller-manager into a thin image
-FROM ubuntu:latest
+FROM ubuntu:16.04
 WORKDIR /root/
 COPY --from=builder /go/src/github.com/cvgw/rds-aurora-operator/manager .
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y ca-certificates
 ENTRYPOINT ["./manager"]
